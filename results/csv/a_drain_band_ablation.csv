@@ -1,0 +1,3 @@
+band,avg_delay_ms,packet_loss_bytes,throughput,pdr,network_lifetime,packets_sent,packets_received,rounds_completed,nodes_flagged_malicious
+paper_Eq8_0.05-0.15,80.63796126209448,64659.0,5.544847531266665,0.915632240979808,995.5,1007.5,922.5,1022.0,0.0
+code_0.04-0.12,81.07403738216738,76905.0,5.595190436710691,0.9188891966513755,1237.0,1257.5,1155.5,1268.0,0.0

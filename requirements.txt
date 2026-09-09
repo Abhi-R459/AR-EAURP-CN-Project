@@ -1,0 +1,11 @@
+# Colab already ships all of these; this file is for local runs.
+# The notebook's guard cell installs only what is genuinely missing.
+numpy>=1.24
+matplotlib>=3.7
+networkx>=3.0
+pandas>=2.0
+torch>=2.0            # GAN / LSTM / DQN. Without it every learned component
+                      # falls back to its documented baseline and says so.
+cryptography>=41.0    # real X25519 ECDH for the ECC layer (base.pdf 3.9)
+pytest>=7.0           # test suite
+nbformat>=5.0         # notebook generation

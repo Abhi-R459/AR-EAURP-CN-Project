@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Scratch
+*.log
+.venv/
+venv/
+
+# Third-party source papers, deliberately not redistributed.
+# See project_docs/README.md for what they are and where to get them.
+project_docs/base.pdf
+project_docs/Lekha.pdf
