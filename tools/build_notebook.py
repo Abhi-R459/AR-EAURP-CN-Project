@@ -17,7 +17,25 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-OUTPUT = os.path.join(ROOT, "colab", "REVIEW2_AR_EAURP.ipynb")
+
+# Two notebooks are generated from the same source tree and the same analysis
+# cells; only the way the code reaches Colab differs.
+#
+#   selfcontained  40 %%writefile cells carry the project inside the notebook.
+#                  Works with no network, no GitHub and no account. Long.
+#   github         one git clone. Short, and guaranteed to match the repo,
+#                  which makes it the better default now that the repo exists.
+MODE_SELFCONTAINED = "selfcontained"
+MODE_GITHUB = "github"
+
+REPO_URL = "https://github.com/Abhi-R459/AR-EAURP-CN-Project.git"
+CLONE_DIR = "/content/AR-EAURP-CN-Project"
+
+OUTPUTS = {
+    MODE_SELFCONTAINED: os.path.join(ROOT, "colab", "REVIEW2_AR_EAURP.ipynb"),
+    MODE_GITHUB: os.path.join(ROOT, "colab", "REVIEW2_FROM_GITHUB.ipynb"),
+}
+OUTPUT = OUTPUTS[MODE_SELFCONTAINED]
 
 # Order matters only for readability; Python resolves imports at call time.
 MODULE_ORDER = [
@@ -96,8 +114,33 @@ def writefile_cell(relative_path):
     }
 
 
-def build():
+def build(mode=MODE_SELFCONTAINED):
+    if mode not in OUTPUTS:
+        raise ValueError("unknown mode {0!r}".format(mode))
     cells = []
+
+    how_code_arrives = {
+        MODE_SELFCONTAINED: (
+            "> **How the code gets here:** this notebook carries the whole "
+            "project inside it. Section 0.1 is 40 folded `%%writefile` cells "
+            "that create `src/`, `experiments/` and `tests/` in the session. "
+            "They render as an empty-looking gap, which is exactly why `src/` "
+            "goes missing if you skip them. Nothing is downloaded.\n>\n"
+            "> Prefer **`REVIEW2_FROM_GITHUB.ipynb`** if you would rather it "
+            "clone the repository - that one is a tenth the size and always "
+            "matches the latest commit."
+        ),
+        MODE_GITHUB: (
+            "> **How the code gets here:** section 0.1 clones "
+            "[the repository](" + REPO_URL.replace(".git", "") + ") into the "
+            "session and changes into it, so `src/` and everything else is "
+            "present on disk. Re-run that cell any time to pull the latest "
+            "commit.\n>\n"
+            "> Use **`REVIEW2_AR_EAURP.ipynb`** instead if you need a version "
+            "that works with no network and no GitHub - it embeds every source "
+            "file directly."
+        ),
+    }[mode]
 
     cells.append(markdown("""
 # AR-EAURP - Review 2
@@ -112,8 +155,10 @@ Three implementations and an honest comparison:
 | **B** | The senior's delivered code, logic verbatim | `senior_code.ipynb` |
 | **C** | AR-EAURP - GAN trust defence + LSTM energy forecasting + CMDP | `Date_ 24_07_26.docx` |
 
-Run order: **Runtime > Run all**. Setup writes the source tree into this
-Colab session, then Track 1 and Track 2 run in turn.
+Run order: **Runtime > Run all**. Section 0 puts the project into the Colab
+session, then Track 1 and Track 2 run in turn.
+
+__HOW_CODE_ARRIVES__
 
 ---
 
@@ -138,7 +183,7 @@ is about gray-holes. So the evaluation runs on two tracks:
   mechanistic simulator where packets are walked hop by hop, with identical
   seeds, topology, mobility, traffic and adversary placement. This is where the
   fair comparison and the attack sweep live.
-"""))
+""".replace("__HOW_CODE_ARRIVES__", how_code_arrives)))
 
     # ---------------------------------------------------------------- setup
     cells.append(markdown("## 0. Setup"))
@@ -169,6 +214,41 @@ except Exception as exc:
     print("baselines and every result will say so explicitly.")
 """))
 
+    if mode == MODE_GITHUB:
+        cells.append(markdown(
+            "### 0.1 Fetch the project from GitHub\n\n"
+            "This clones the repository into the Colab session and changes into "
+            "it, so every relative path (`src/`, `results/`, `tests/`) resolves. "
+            "Re-running the cell pulls the latest commit instead of cloning "
+            "again, so you can pick up changes without restarting the runtime."
+        ))
+        cells.append(code("""
+import os, subprocess, sys
+
+REPO_URL  = "{repo}"
+CLONE_DIR = "{clone}"
+
+if os.path.isdir(os.path.join(CLONE_DIR, ".git")):
+    print("already cloned - pulling latest")
+    subprocess.run(["git", "-C", CLONE_DIR, "pull", "--ff-only", "--quiet"],
+                   check=False)
+else:
+    print("cloning", REPO_URL)
+    subprocess.run(["git", "clone", "--depth", "1", "--quiet",
+                    REPO_URL, CLONE_DIR], check=True)
+
+# chdir matters: the experiment scripts write to relative paths like
+# results/csv, and the package is imported as `src.*` from the repo root.
+os.chdir(CLONE_DIR)
+if CLONE_DIR not in sys.path:
+    sys.path.insert(0, CLONE_DIR)
+
+print("working directory:", os.getcwd())
+print("commit:", subprocess.run(["git", "log", "-1", "--oneline"],
+                                capture_output=True, text=True).stdout.strip())
+print("contents:", sorted(p for p in os.listdir(".") if not p.startswith(".")))
+""".format(repo=REPO_URL, clone=CLONE_DIR)))
+
     cells.append(code("""
 # Optional: mount Google Drive so results survive a disconnected session.
 # Every sweep writes its CSV the moment it finishes and is skipped on re-run,
@@ -189,7 +269,8 @@ except Exception as exc:
 os.environ["AR_EAURP_RESULTS"] = RESULTS_DIR
 """))
 
-    cells.append(code("""
+    if mode == MODE_SELFCONTAINED:
+        cells.append(code("""
 # Create the package directories before the %%writefile cells below run.
 import os
 for path in ["src/common", "src/routing", "src/a_drl_eaurp", "src/b_senior",
@@ -199,16 +280,19 @@ for path in ["src/common", "src/routing", "src/a_drl_eaurp", "src/b_senior",
 print("source tree ready")
 """))
 
-    cells.append(markdown(
-        "### 0.1 Source modules\n\n"
-        "The cells below write the project into this session. They are folded "
-        "away because they are the same files as in `src/` - the notebook is "
-        "generated from that tree by `tools/build_notebook.py`, so the two can "
-        "never drift. Skip straight to section 1."
-    ))
+        cells.append(markdown(
+            "### 0.1 Source modules\n\n"
+            "**These cells are what create `src/`.** They are folded away "
+            "because they duplicate the files in the repository, so the section "
+            "looks like an empty gap - but if you skip them, nothing below can "
+            "import and `src/` will not exist in the file browser. Run the "
+            "notebook from the top, or Runtime > Run all.\n\n"
+            "The notebook is generated from the source tree by "
+            "`tools/build_notebook.py`, so the two cannot drift."
+        ))
 
-    for relative_path in MODULE_ORDER:
-        cells.append(writefile_cell(relative_path))
+        for relative_path in MODULE_ORDER:
+            cells.append(writefile_cell(relative_path))
 
     cells.append(code("""
 import sys
@@ -542,16 +626,21 @@ except Exception:
         "nbformat_minor": 0,
     }
 
-    os.makedirs(os.path.dirname(OUTPUT), exist_ok=True)
-    with open(OUTPUT, "w", encoding="utf-8") as handle:
+    destination = OUTPUTS[mode]
+    os.makedirs(os.path.dirname(destination), exist_ok=True)
+    with open(destination, "w", encoding="utf-8") as handle:
         json.dump(notebook, handle, indent=1, ensure_ascii=False)
 
-    size = os.path.getsize(OUTPUT)
-    print("wrote {0}".format(OUTPUT))
-    print("  {0} cells, {1:.0f} KB, {2} source modules embedded".format(
-        len(cells), size / 1024.0, len(MODULE_ORDER)))
-    return OUTPUT
+    size = os.path.getsize(destination)
+    embedded = len(MODULE_ORDER) if mode == MODE_SELFCONTAINED else 0
+    print("wrote {0}".format(destination))
+    print("  mode={0}, {1} cells, {2:.0f} KB, {3} modules embedded".format(
+        mode, len(cells), size / 1024.0, embedded))
+    return destination
 
 
 if __name__ == "__main__":
-    sys.exit(0 if build() else 1)
+    requested = sys.argv[1:] or [MODE_SELFCONTAINED, MODE_GITHUB]
+    for name in requested:
+        build(name)
+    sys.exit(0)

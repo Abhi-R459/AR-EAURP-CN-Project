@@ -9,14 +9,39 @@ and an honest comparison.
 | **B** | The senior's delivered code, logic verbatim | `project_docs/senior_code.ipynb` |
 | **C** | AR-EAURP — GAN trust defence, LSTM energy forecasting, CMDP routing | `project_docs/Date_ 24_07_26.docx` |
 
-## Run it
+## Run it on Colab
 
-**On Colab (the intended path).** Upload `colab/REVIEW2_AR_EAURP.ipynb`, then
-Runtime → Run all. The notebook writes the whole source tree into the session,
-runs both tracks and renders every figure. Nothing to install; Colab already
-ships numpy, matplotlib, networkx, pandas and torch.
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Abhi-R459/AR-EAURP-CN-Project/blob/main/colab/REVIEW2_FROM_GITHUB.ipynb)
 
-**Locally**, if you have the dependencies:
+Click the badge, then **Runtime → Run all**. Nothing to upload and nothing to
+install — Colab already ships numpy, matplotlib, networkx, pandas and torch.
+
+There are two notebooks. They contain the same analysis and differ only in how
+the code reaches the session:
+
+| notebook | size | how `src/` gets there |
+|---|---|---|
+| **`colab/REVIEW2_FROM_GITHUB.ipynb`** | 35 cells, 21 KB | clones this repository, then `cd`s into it |
+| `colab/REVIEW2_AR_EAURP.ipynb` | 75 cells, 395 KB | 40 folded `%%writefile` cells that write the tree into the session |
+
+Use the first one. Use the second only if you need it to work with no network
+and no GitHub — it embeds every source file directly.
+
+> **If `src/` appears to be missing in Colab**, the setup section has not run.
+> In the GitHub notebook that is the clone cell; in the self-contained one it
+> is the block of 40 folded `%%writefile` cells, which render as an
+> empty-looking gap and are easy to scroll straight past. Run from the top, or
+> Runtime → Run all.
+
+Results checkpoint to CSV as each sweep finishes and are skipped on a re-run,
+so an interrupted Colab session resumes rather than restarting. Mount Drive
+when the notebook offers, and they survive the session entirely.
+
+## Run it locally
+
+```bash
+pip install -r requirements.txt
+```
 
 ```bash
 python experiments/run_all.py --profile quick
@@ -26,9 +51,16 @@ python experiments/run_all.py --profile quick
 python experiments/run_all.py --profile full
 ```
 
-Sweeps checkpoint to CSV as they finish and are skipped on a re-run, so an
-interrupted session resumes rather than restarting. Point `--out-dir` (or
-`AR_EAURP_RESULTS`) at a Drive path to keep results across Colab sessions.
+`quick` (200 rounds × 2 runs) is a smoke test; `full` (400 rounds × 5 runs)
+produces the numbers to present. Add `--only e3` to run just the attack sweep,
+or `--out-dir <path>` to write results elsewhere.
+
+Regenerate the notebooks and the report after any code change — `src/` is the
+single source of truth and the notebooks are generated from it:
+
+```bash
+python tools/build_notebook.py && python tools/make_report.py
+```
 
 ## Why there are two tracks
 
