@@ -14,3 +14,8 @@ venv/
 # See project_docs/README.md for what they are and where to get them.
 project_docs/base.pdf
 project_docs/Lekha.pdf
+
+# Stray copies dropped at the repo root when files are shared out of the
+# session. The canonical locations are colab/ and report/.
+/REVIEW2_AR_EAURP.ipynb
+/REVIEW2_REPORT.md
