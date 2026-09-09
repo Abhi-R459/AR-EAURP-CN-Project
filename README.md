@@ -13,8 +13,23 @@ and an honest comparison.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Abhi-R459/AR-EAURP-CN-Project/blob/main/colab/REVIEW2_FROM_GITHUB.ipynb)
 
-Click the badge, then **Runtime → Run all**. Nothing to upload and nothing to
-install — Colab already ships numpy, matplotlib, networkx, pandas and torch.
+Then **Runtime → Run all**. Nothing to install — Colab already ships numpy,
+matplotlib, networkx, pandas and torch.
+
+> ⚠️ **This repository is private.** A Colab session holds no GitHub
+> credentials, so the badge above and the notebook's `git clone` will both fail
+> until one of these is true:
+>
+> - the repository is **made public** (Settings → General → Danger Zone →
+>   Change visibility) — then everything works with one click; or
+> - a fine-grained **personal access token** with read access to this repo is
+>   stored in Colab Secrets (key icon, left sidebar) under the name
+>   `GITHUB_TOKEN` with notebook access enabled — the clone cell picks it up
+>   automatically; or
+> - you use `colab/REVIEW2_AR_EAURP.ipynb`, which needs no network at all.
+>
+> Upload it manually (File → Upload notebook) and it works regardless of
+> visibility.
 
 There are two notebooks. They contain the same analysis and differ only in how
 the code reaches the session:
