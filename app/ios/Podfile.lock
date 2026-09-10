@@ -1,0 +1,29 @@
+PODS:
+  - battery_plus (1.0.0):
+    - Flutter
+  - Flutter (1.0.0)
+  - nearby_service (0.0.1):
+    - Flutter
+    - FlutterMacOS
+
+DEPENDENCIES:
+  - battery_plus (from `.symlinks/plugins/battery_plus/ios`)
+  - Flutter (from `Flutter`)
+  - nearby_service (from `.symlinks/plugins/nearby_service/darwin`)
+
+EXTERNAL SOURCES:
+  battery_plus:
+    :path: ".symlinks/plugins/battery_plus/ios"
+  Flutter:
+    :path: Flutter
+  nearby_service:
+    :path: ".symlinks/plugins/nearby_service/darwin"
+
+SPEC CHECKSUMS:
+  battery_plus: b42253f6d2dde71712f8c36fef456d99121c5977
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  nearby_service: 608702f35ef2b2f4d10b29b49c9a1bd24ae2ff03
+
+PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
+
+COCOAPODS: 1.16.2

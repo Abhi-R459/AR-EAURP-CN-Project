@@ -54,6 +54,24 @@ when the notebook offers, and they survive the session entirely.
 
 ## Run it locally
 
+### Peer-to-peer Flutter messenger
+
+The `app/` folder contains RelayMesh, a real nearby-device text messenger.
+It uses Wi-Fi Direct for Android-to-Android communication and Multipeer
+Connectivity for Apple-to-Apple communication. Neither path requires internet
+or a Wi-Fi router.
+
+```bash
+cd app
+flutter devices
+flutter run -d <device-id>
+```
+
+See [`app/README.md`](app/README.md) for physical-device setup and transport
+limitations.
+
+### Experiments
+
 ```bash
 pip install -r requirements.txt
 ```
