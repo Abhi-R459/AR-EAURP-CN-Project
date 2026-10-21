@@ -188,13 +188,43 @@ class NearbyTransport extends ChangeNotifier {
   Future<bool> sendMessage(String text) async {
     final peer = _connectedDevice;
     if (peer == null || _service == null || !canSend) return false;
-    if (utf8.encode(text).length > settings.maximumMessageBytes) {
+    final bytes = utf8.encode(text).length;
+    if (bytes > settings.maximumMessageBytes) {
       errorMessage =
           'This message exceeds the ${settings.maximumMessageBytes}-byte limit.';
       notifyListeners();
       return false;
     }
     final request = NearbyMessageTextRequest.create(value: text);
+    final isLarge = bytes >= settings.grayHoleThresholdBytes;
+    final header = MeshPacketHeader(
+      sourceId: 'local',
+      destinationId: peer.info.id,
+      packetId: request.id,
+      ttl: 64,
+      hopCount: 1,
+      payloadSizeBytes: bytes,
+      routeHistory: ['local', peer.info.id],
+      isLargePacket: isLarge,
+    );
+
+    if (settings.simulateGrayHoleDrop && isLarge) {
+      final local = DirectMessage(
+        id: request.id,
+        peerId: peer.info.id,
+        text: text,
+        sentAt: DateTime.now(),
+        outgoing: true,
+        delivery: MessageDelivery.failed,
+        meshHeader: header,
+        failureReason:
+            'Gray-hole adversary: Dropped $bytes B packet (>= ${settings.grayHoleThresholdBytes} B threshold)',
+      );
+      messages.add(local);
+      notifyListeners();
+      return false;
+    }
+
     final local = DirectMessage(
       id: request.id,
       peerId: peer.info.id,
@@ -202,6 +232,7 @@ class NearbyTransport extends ChangeNotifier {
       sentAt: DateTime.now(),
       outgoing: true,
       delivery: MessageDelivery.sending,
+      meshHeader: header,
     );
     messages.add(local);
     notifyListeners();
@@ -210,10 +241,14 @@ class NearbyTransport extends ChangeNotifier {
         OutgoingNearbyMessage(content: request, receiver: peer.info),
       );
       local.delivery = sent ? MessageDelivery.sent : MessageDelivery.failed;
+      if (!sent) {
+        local.failureReason = 'Transport link failed to deliver packet';
+      }
       notifyListeners();
       return sent;
     } catch (error) {
       local.delivery = MessageDelivery.failed;
+      local.failureReason = _readableError(error);
       errorMessage = _readableError(error);
       notifyListeners();
       return false;
@@ -304,6 +339,17 @@ class NearbyTransport extends ChangeNotifier {
   void _handleIncoming(ReceivedNearbyMessage message) {
     message.content.byType(
       onTextRequest: (request) {
+        final bytes = utf8.encode(request.value).length;
+        final header = MeshPacketHeader(
+          sourceId: message.sender.id,
+          destinationId: 'local',
+          packetId: request.id,
+          ttl: 64,
+          hopCount: 1,
+          payloadSizeBytes: bytes,
+          routeHistory: [message.sender.id, 'local'],
+          isLargePacket: bytes >= settings.grayHoleThresholdBytes,
+        );
         messages.add(
           DirectMessage(
             id: request.id,
@@ -312,6 +358,7 @@ class NearbyTransport extends ChangeNotifier {
             sentAt: DateTime.now(),
             outgoing: false,
             delivery: MessageDelivery.received,
+            meshHeader: header,
           ),
         );
         if (settings.deliveryReceipts) {

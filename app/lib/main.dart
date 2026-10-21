@@ -822,6 +822,7 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mine = message.outgoing;
+    final header = message.meshHeader;
     return Align(
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -855,10 +856,47 @@ class _MessageBubble extends StatelessWidget {
                 ),
               ),
             ),
+            if (message.failureReason != null) ...[
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.shield_outlined, size: 12, color: Color(0xffffc4be)),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        message.failureReason!,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Color(0xffffc4be),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 3),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (header != null) ...[
+                  Text(
+                    '${header.payloadSizeBytes}B · hop ${header.hopCount}',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: mine ? Colors.white60 : Colors.black38,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
                 Text(
                   _time(message.sentAt),
                   style: TextStyle(
@@ -989,6 +1027,56 @@ class _SettingsPage extends StatelessWidget {
           value: settings.deliveryReceipts,
           onChanged: (value) {
             settings.deliveryReceipts = value;
+            transport.settingsChanged();
+          },
+        ),
+        const _SectionLabel('AR-EAURP THREAT & PROTOCOL EMULATION'),
+        SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+          secondary: const Icon(Icons.security),
+          title: const Text('Simulate Gray-Hole Adversary'),
+          subtitle: const Text(
+            'Selectively drop packets exceeding payload threshold to test resilience',
+          ),
+          value: settings.simulateGrayHoleDrop,
+          onChanged: (value) {
+            settings.simulateGrayHoleDrop = value;
+            transport.settingsChanged();
+          },
+        ),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+          leading: const Icon(Icons.line_weight),
+          title: const Text('Gray-Hole Drop Threshold'),
+          subtitle: const Text('Packets larger than this size are intercepted'),
+          trailing: DropdownButton<int>(
+            value: settings.grayHoleThresholdBytes,
+            underline: const SizedBox.shrink(),
+            items: const [300, 500, 700, 1024]
+                .map(
+                  (value) => DropdownMenuItem(
+                    value: value,
+                    child: Text('$value B'),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              settings.grayHoleThresholdBytes = value;
+              transport.settingsChanged();
+            },
+          ),
+        ),
+        SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+          secondary: const Icon(Icons.verified_user_outlined),
+          title: const Text('Trust & Energy-Aware Routing Gating'),
+          subtitle: const Text(
+            'CMDP constraint + GAN intermediate feature anomaly filtering (threshold 0.55)',
+          ),
+          value: settings.arEaurpTrustGating,
+          onChanged: (value) {
+            settings.arEaurpTrustGating = value;
             transport.settingsChanged();
           },
         ),
