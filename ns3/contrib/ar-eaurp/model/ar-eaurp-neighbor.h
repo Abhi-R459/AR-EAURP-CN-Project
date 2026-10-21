@@ -36,7 +36,7 @@ namespace arEaurp
 {
 
 /// Number of behaviour features fed to the anomaly detector.
-constexpr uint32_t kFeatureDim = 8;
+constexpr uint32_t kFeatureDim = 9;
 
 /// One watched neighbour.
 struct NeighborEntry
@@ -219,10 +219,17 @@ class NeighborTrust
         return m_revoked;
     }
 
-    /// Behaviour feature vectors, one per subject watched often enough.
+    /**
+     * \brief Behaviour feature vectors, one per subject watched often enough.
+     *
+     * \param minWindow observations required within the window; a vector built
+     *        from two or three packets is mostly sampling noise and, fed to the
+     *        detector as training data, teaches it that noise is normal.
+     */
     void ExtractFeatures(std::vector<Ipv4Address>& subjects,
                          std::vector<std::vector<double>>& features,
-                         bool updateSnapshot);
+                         bool updateSnapshot,
+                         uint32_t minWindow = 1);
 
     /// Bind a MAC address seen on the air to the IP that owns it.
     void BindMac(Mac48Address mac, Ipv4Address addr);

@@ -86,12 +86,14 @@ class Oracle
     {
         m_measurementStart = t;
     }
+    void SetMeasurementEnd(Time t) { m_measurementEnd = t; }
 
     bool Measuring() const;
 
     // -- data plane counters -------------------------------------------------
     void CountAppTx(uint32_t bytes);
     void CountAppRx(uint32_t bytes, Time delay, uint32_t hops);
+    void CountAppFeedback(bool delivered, Time sent);
     void CountForward();
     void CountAdversaryDrop(uint32_t bytes, bool large);
     void CountEnergyDrop();
@@ -105,8 +107,17 @@ class Oracle
     void CountQueueDrop(bool overflow);
     void CountLinkFailure(bool dataFrame);
     void CountLocalRepair();
+    void CountCryptoTx(uint32_t overhead);
+    void CountCryptoFailure();
 
     // -- detection accounting ------------------------------------------------
+    /// Store one (anomaly score, ground truth) pair for detector evaluation.
+    void RecordDetectorScore(double score, bool malicious);
+
+    /// Area under the ROC curve of the recorded scores; 0.5 means no better
+    /// than guessing.
+    double DetectorAuc() const;
+
     void ReportContested(Ipv4Address observer, Ipv4Address subject);
     void ReportRevoked(Ipv4Address observer, Ipv4Address subject);
 
@@ -159,6 +170,7 @@ class Oracle
     uint32_t m_nNodes{0};
     RunPhase m_phase{PHASE_EVALUATION};
     Time m_measurementStart{Seconds(0)};
+    Time m_measurementEnd{Time::Max()};
 
     std::map<Ipv4Address, uint32_t> m_ipToNode;
     std::vector<uint32_t> m_role;
@@ -166,6 +178,8 @@ class Oracle
 
     uint64_t m_appTx{0};
     uint64_t m_appRx{0};
+    uint64_t m_feedbackSuccess{0};
+    uint64_t m_feedbackTimeout{0};
     uint64_t m_appTxBytes{0};
     uint64_t m_appRxBytes{0};
     double m_delaySum{0.0};
@@ -190,11 +204,15 @@ class Oracle
     uint64_t m_linkFailures{0};
     uint64_t m_linkFailuresData{0};
     uint64_t m_localRepairs{0};
+    uint64_t m_cryptoPackets{0};
+    uint64_t m_cryptoBytes{0};
+    uint64_t m_cryptoFailures{0};
 
     // observer -> subjects it flagged
     std::map<Ipv4Address, std::set<Ipv4Address>> m_contested;
     std::map<Ipv4Address, std::set<Ipv4Address>> m_revocations;
 
+    std::vector<std::pair<double, bool>> m_detectorScores;
     std::vector<Time> m_death;
     uint32_t m_dead{0};
 

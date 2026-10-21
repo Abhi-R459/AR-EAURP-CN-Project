@@ -208,12 +208,17 @@ ArTrafficApp::Send()
     Ptr<Packet> packet = Create<Packet>(payload - header.GetSerializedSize());
     packet->AddHeader(header);
 
-    m_socket->SendTo(packet, 0, InetSocketAddress(m_remote, m_port));
+    m_socket->SendTo(Protect(packet, m_seq), 0, InetSocketAddress(m_remote, m_port));
     m_sent++;
+    if (auto routing = DynamicCast<RoutingProtocol>(GetNode()->GetObject<Ipv4>()->GetRoutingProtocol()))
+        routing->RecordEndpoint(true);
     Oracle::Get().CountAppTx(payload);
 
     if (m_enableAck)
     {
+        // Loopback route discovery is queued before this ScheduleNow event.
+        // Store the selected action with this sequence before any ACK arrives.
+        Simulator::ScheduleNow(&ArTrafficApp::RecordDecision, this, m_seq);
         m_ackTimers[m_seq] =
             Simulator::Schedule(m_ackTimeout, &ArTrafficApp::AckTimeout, this, m_seq);
     }
@@ -240,6 +245,18 @@ ArTrafficApp::HandleRead(Ptr<Socket> socket)
         }
 
         ArTrafficHeader header;
+        if (m_cipher)
+        {
+            std::vector<uint8_t> wire(packet->GetSize()), clear;
+            packet->CopyData(wire.data(), wire.size());
+            if (!m_cipher->Open(wire, clear))
+            {
+                Oracle::Get().CountCryptoFailure();
+                continue;
+            }
+            packet = Create<Packet>(clear.data(), clear.size());
+        }
+        if (packet->GetSize() < header.GetSerializedSize()) continue;
         packet->RemoveHeader(header);
         const Ipv4Address peer = InetSocketAddress::ConvertFrom(from).GetIpv4();
 
@@ -250,12 +267,14 @@ ArTrafficApp::HandleRead(Ptr<Socket> socket)
             {
                 t->second.Cancel();
                 m_ackTimers.erase(t);
-                ReportDelivery(true, header.GetHops());
+                ReportDelivery(true, header.GetHops(), header.GetSeq(), header.GetSendTime());
             }
             continue;
         }
 
         m_received++;
+        if (auto routing = DynamicCast<RoutingProtocol>(GetNode()->GetObject<Ipv4>()->GetRoutingProtocol()))
+            routing->RecordEndpoint(false);
         Oracle::Get().CountAppRx(packet->GetSize() + header.GetSerializedSize(),
                                  Simulator::Now() - header.GetSendTime(),
                                  hops);
@@ -269,7 +288,7 @@ ArTrafficApp::HandleRead(Ptr<Socket> socket)
             ack.SetHops((uint8_t)std::min<uint32_t>(255, hops));
             Ptr<Packet> reply = Create<Packet>(14); // 32-byte acknowledgement
             reply->AddHeader(ack);
-            socket->SendTo(reply, 0, InetSocketAddress(peer, m_port));
+            socket->SendTo(Protect(reply, ack.GetSeq()), 0, InetSocketAddress(peer, m_port));
         }
     }
 }
@@ -278,12 +297,30 @@ void
 ArTrafficApp::AckTimeout(uint64_t seq)
 {
     m_ackTimers.erase(seq);
-    ReportDelivery(false, 0);
+    ReportDelivery(false, 0, seq, Simulator::Now() - m_ackTimeout);
+}
+
+Ptr<Packet> ArTrafficApp::Protect(Ptr<Packet> packet, uint64_t sequence)
+{
+    if (!m_cipher) return packet;
+    std::vector<uint8_t> clear(packet->GetSize());
+    packet->CopyData(clear.data(), clear.size());
+    auto wire = m_cipher->Seal(clear, sequence);
+    Oracle::Get().CountCryptoTx(wire.size() - clear.size());
+    return Create<Packet>(wire.data(), wire.size());
 }
 
 void
-ArTrafficApp::ReportDelivery(bool delivered, uint32_t hops)
+ArTrafficApp::RecordDecision(uint64_t sequence)
 {
+    auto routing = DynamicCast<RoutingProtocol>(GetNode()->GetObject<Ipv4>()->GetRoutingProtocol());
+    if (routing) m_decisionIds[sequence] = routing->DecisionId(m_remote);
+}
+
+void
+ArTrafficApp::ReportDelivery(bool delivered, uint32_t hops, uint64_t sequence, Time sent)
+{
+    Oracle::Get().CountAppFeedback(delivered, sent);
     Ptr<Ipv4> ipv4 = GetNode()->GetObject<Ipv4>();
     if (!ipv4)
     {
@@ -292,8 +329,11 @@ ArTrafficApp::ReportDelivery(bool delivered, uint32_t hops)
     Ptr<RoutingProtocol> routing = DynamicCast<RoutingProtocol>(ipv4->GetRoutingProtocol());
     if (routing)
     {
-        routing->NotifyDelivery(m_remote, delivered, hops == 0 ? 3 : hops);
+        auto decision = m_decisionIds.find(sequence);
+        routing->NotifyDelivery(m_remote, delivered, hops == 0 ? 3 : hops,
+                                decision == m_decisionIds.end() ? 0 : decision->second);
     }
+    m_decisionIds.erase(sequence);
 }
 
 } // namespace arEaurp

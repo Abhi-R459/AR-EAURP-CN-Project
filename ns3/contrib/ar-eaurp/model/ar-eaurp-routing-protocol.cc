@@ -124,7 +124,7 @@ RoutingProtocol::RoutingProtocol()
       m_gidSeq(0),
       m_nidInterval(Seconds(1)),
       m_gidInterval(Seconds(10)),
-      m_detectInterval(Seconds(10)),
+      m_detectInterval(Seconds(20)),
       m_watchdogTimeout(Seconds(1)),
       m_activeRouteTimeout(Seconds(20)),
       m_pathDiscoveryTime(Seconds(3)),
@@ -141,6 +141,7 @@ RoutingProtocol::RoutingProtocol()
       m_gidTtl(1),
       m_netDiameter(10),
       m_maxQueueLen(64),
+      m_detectMinWindow(6),
       m_localRepair(true),
       m_floodSuppression(true),
       m_minAdditionalCoverage(1),
@@ -189,7 +190,17 @@ RoutingProtocol::GetTypeId()
                                           VARIANT_EAURP,
                                           "EAURP",
                                           VARIANT_AR_EAURP,
-                                          "AR-EAURP"))
+                                          "AR-EAURP",
+                                          VARIANT_DRL_PAPER,
+                                          "DRL-paper",
+                                          VARIANT_DRL_SENIOR,
+                                          "DRL-senior"))
+            .AddAttribute("UseGan", "Enable anomaly detection.", BooleanValue(true),
+                          MakeBooleanAccessor(&RoutingProtocol::m_useGan), MakeBooleanChecker())
+            .AddAttribute("UseLstm", "Enable learned harvest forecasting.", BooleanValue(true),
+                          MakeBooleanAccessor(&RoutingProtocol::m_useLstm), MakeBooleanChecker())
+            .AddAttribute("UseCmdp", "Enable constrained route selection.", BooleanValue(true),
+                          MakeBooleanAccessor(&RoutingProtocol::m_useCmdp), MakeBooleanChecker())
             .AddAttribute("Attack",
                           "Adversarial behaviour of this node.",
                           EnumValue(ATTACK_NONE),
@@ -219,7 +230,7 @@ RoutingProtocol::GetTypeId()
                           MakeTimeChecker())
             .AddAttribute("DetectInterval",
                           "Period of the AR-EAURP anomaly-detection pass.",
-                          TimeValue(Seconds(10)),
+                          TimeValue(Seconds(20)),
                           MakeTimeAccessor(&RoutingProtocol::m_detectInterval),
                           MakeTimeChecker())
             .AddAttribute("WatchdogTimeout",
@@ -286,6 +297,11 @@ RoutingProtocol::GetTypeId()
                           "Packets buffered per node while a route is discovered.",
                           UintegerValue(64),
                           MakeUintegerAccessor(&RoutingProtocol::m_maxQueueLen),
+                          MakeUintegerChecker<uint32_t>())
+            .AddAttribute("DetectMinWindow",
+                          "Watchdog observations a detection window needs to be usable.",
+                          UintegerValue(6),
+                          MakeUintegerAccessor(&RoutingProtocol::m_detectMinWindow),
                           MakeUintegerChecker<uint32_t>())
             .AddAttribute("LocalRepair",
                           "Repair a broken route at the break instead of dropping the packet.",
@@ -677,6 +693,11 @@ RoutingProtocol::HopCostMilli(Ipv4Address neighbour, uint8_t policy) const
     }
 
     double trust = m_neighbors.GetTrust(neighbour);
+    if (m_variant == VARIANT_DRL_SENIOR)
+    {
+        auto report = m_endpointReports.find(neighbour);
+        trust = report == m_endpointReports.end() ? 1.0 : report->second;
+    }
     const double energy = m_neighbors.GetEnergyFraction(neighbour);
     const double surplus = m_neighbors.GetSurplus(neighbour);
 
@@ -931,7 +952,11 @@ RoutingProtocol::RouteInput(Ptr<const Packet> p,
         DeferredRouteOutputTag tag;
         if (p->PeekPacketTag(tag))
         {
-            DeferredRouteOutput(p, header, ucb, ecb);
+            // Loopback dispatch is an internal queue, not a network hop.
+            // Ipv4 forwarding decrements TTL again when dequeuing it.
+            Ipv4Header queuedHeader = header;
+            queuedHeader.SetTtl(header.GetTtl() + 1);
+            DeferredRouteOutput(p, queuedHeader, ucb, ecb);
             return true;
         }
     }
@@ -1161,7 +1186,11 @@ RoutingProtocol::SendRequest(Ipv4Address dst)
     // AR-EAURP: the constrained agent picks the scoring policy for this
     // discovery, from the node's own view of trust, energy and recent delivery.
     uint8_t policy = ACTION_BALANCED;
-    if (m_variant == VARIANT_AR_EAURP && Oracle::Get().Agent() &&
+    RoutingTableEntry searching;
+    const bool retry = m_routingTable.LookupRoute(dst, searching) &&
+                       searching.GetFlag() == IN_SEARCH && m_pending.count(dst);
+    if (retry) policy = m_policyInUse[dst];
+    else if (m_variant == VARIANT_AR_EAURP && m_useCmdp && Oracle::Get().Agent() &&
         Oracle::Get().Phase() == PHASE_EVALUATION)
     {
         const Vec state = BuildState();
@@ -1171,7 +1200,26 @@ RoutingProtocol::SendRequest(Ipv4Address dst)
         pd.state = state;
         pd.action = action;
         pd.taken = Simulator::Now();
+        pd.id = ++m_nextDecision;
         m_pending[dst] = pd;
+        m_decisionHistory[pd.id] = pd;
+    }
+    else if (m_variant == VARIANT_DRL_PAPER || m_variant == VARIANT_DRL_SENIOR)
+    {
+        Vec state = BuildState();
+        const uint32_t action = m_tabular.Act(state, m_uniform->GetValue(), m_uniform->GetInteger(0, 1));
+        policy = action == 0 ? ACTION_TRUST : ACTION_DIVERSE;
+        PendingDecision pd{state, action, Simulator::Now(), ++m_nextDecision};
+        m_pending[dst] = pd;
+        m_decisionHistory[pd.id] = pd;
+    }
+    // Decisions older than two ACK horizons cannot have outstanding rewards.
+    for (auto i = m_decisionHistory.begin(); i != m_decisionHistory.end();)
+    {
+        if (Simulator::Now() - i->second.taken > Seconds(12) &&
+            std::none_of(m_pending.begin(), m_pending.end(), [&](const auto& entry) { return entry.second.id == i->first; }))
+            i = m_decisionHistory.erase(i);
+        else ++i;
     }
     m_policyInUse[dst] = policy;
 
@@ -1997,6 +2045,10 @@ RoutingProtocol::SendNid()
         nid.SetOrigin(MainAddress());
         nid.SetEnergyFraction(EnergyFraction());
         nid.SetSurplus(PredictedSurplus());
+        if (m_variant == VARIANT_DRL_SENIOR)
+        {
+            nid.AddRatio(MainAddress(), m_endpointTrust.Trust());
+        }
 
         for (const auto& kv : m_neighbors.Table())
         {
@@ -2008,7 +2060,7 @@ RoutingProtocol::SendNid()
             }
             // base.pdf 3.6: the forwarding ratios this node has measured. A
             // slanderer publishes something else.
-            if (m_variant != VARIANT_AODV &&
+            if (m_variant != VARIANT_AODV && m_variant != VARIANT_DRL_SENIOR &&
                 kv.second.requested >= (double)m_minObservations)
             {
                 nid.AddRatio(kv.first, PublishedTrust(kv.first, kv.second.trust));
@@ -2059,6 +2111,11 @@ RoutingProtocol::RecvNid(Ptr<Packet> p, Ipv4Address src)
 
     for (const auto& r : nid.GetRatios())
     {
+        if (m_variant == VARIANT_DRL_SENIOR && r.first == nid.GetOrigin())
+        {
+            m_endpointReports[nid.GetOrigin()] = r.second;
+            continue;
+        }
         if (!IsMyOwnAddress(r.first))
         {
             m_neighbors.AddOpinion(nid.GetOrigin(), r.first, r.second);
@@ -2070,7 +2127,7 @@ RoutingProtocol::RecvNid(Ptr<Packet> p, Ipv4Address src)
 void
 RoutingProtocol::SendGid()
 {
-    if (m_variant == VARIANT_AODV)
+    if (m_variant == VARIANT_AODV || m_variant == VARIANT_DRL_SENIOR)
     {
         m_gidTimer.Schedule(m_gidInterval);
         return;
@@ -2178,6 +2235,7 @@ RoutingProtocol::RecvGid(Ptr<Packet> p, Ipv4Address src, Ipv4Address receiver)
 void
 RoutingProtocol::RunConsensus()
 {
+    if (m_variant == VARIANT_AODV || m_variant == VARIANT_DRL_SENIOR) return;
     // Opinions go stale: a vote must be about recent behaviour.
     m_neighbors.PurgeOpinions(4 * m_gidInterval);
 
@@ -2250,6 +2308,7 @@ RoutingProtocol::ApplyRevocation(Ipv4Address subject, uint8_t evidence, bool ori
 void
 RoutingProtocol::RecvCrev(Ptr<Packet> p, Ipv4Address src, Ipv4Address receiver)
 {
+    if (m_variant == VARIANT_AODV || m_variant == VARIANT_DRL_SENIOR) return;
     CrevHeader crev;
     p->RemoveHeader(crev);
 
@@ -2430,7 +2489,7 @@ RoutingProtocol::NotifyPhyTx(Ptr<const Packet> frame, double txPowerW)
     NS_LOG_DEBUG("ARM " << MainAddress() << " -> " << nextHop << " ipsrc=" << ip.GetSource()
                         << " ipdst=" << ip.GetDestination() << " framesize=" << copy->GetSize()
                         << " digest=" << digest);
-    m_neighbors.ArmWatchdog(nextHop, digest, copy->GetSize());
+    m_neighbors.ArmWatchdog(nextHop, digest, copy->GetSize() - ip.GetSerializedSize());
     Oracle::Get().CountWatchdogArmed();
 }
 
@@ -2641,7 +2700,7 @@ RoutingProtocol::SampleHarvest()
             {
                 forecaster->AddSample(node->GetId(), watts, phase);
             }
-            else if (forecaster && forecaster->IsTrained())
+            else if (m_useLstm && forecaster && forecaster->IsTrained())
             {
                 m_lastSurplus = forecaster->Predict(m_harvestHistory);
             }
@@ -2653,7 +2712,7 @@ RoutingProtocol::SampleHarvest()
 double
 RoutingProtocol::PredictedSurplus() const
 {
-    if (m_variant != VARIANT_AR_EAURP)
+    if (m_variant != VARIANT_AR_EAURP || !m_useLstm)
     {
         return 0.0;
     }
@@ -2665,7 +2724,7 @@ RoutingProtocol::PredictedSurplus() const
 void
 RoutingProtocol::RunDetection()
 {
-    if (m_variant != VARIANT_AR_EAURP)
+    if (m_variant != VARIANT_AR_EAURP || !m_useGan)
     {
         m_detectTimer.Schedule(m_detectInterval);
         return;
@@ -2673,7 +2732,7 @@ RoutingProtocol::RunDetection()
 
     std::vector<Ipv4Address> subjects;
     std::vector<std::vector<double>> features;
-    m_neighbors.ExtractFeatures(subjects, features, true);
+    m_neighbors.ExtractFeatures(subjects, features, true, m_detectMinWindow);
 
     GanAnomalyDetector* detector = Oracle::Get().Detector();
     if (detector && Oracle::Get().Phase() == PHASE_COMMISSIONING)
@@ -2689,6 +2748,10 @@ RoutingProtocol::RunDetection()
         for (size_t i = 0; i < subjects.size(); ++i)
         {
             const double score = detector->Score(features[i]);
+            // Measurement only: the score paired with the ground truth, so the
+            // detector can be scored as a classifier afterwards. The protocol
+            // itself never sees the label.
+            Oracle::Get().RecordDetectorScore(score, Oracle::Get().IsMalicious(subjects[i]));
             if (score > detector->Threshold())
             {
                 m_neighbors.SetContested(subjects[i], Simulator::Now() + m_contestedTtl, score);
@@ -2739,7 +2802,9 @@ RoutingProtocol::BuildState() const
     {
         if (kv.second.expire > Simulator::Now())
         {
-            trustSum += kv.second.trust;
+            auto report = m_endpointReports.find(kv.first);
+            trustSum += m_variant == VARIANT_DRL_SENIOR
+                ? (report == m_endpointReports.end() ? 1.0 : report->second) : kv.second.trust;
             contested += kv.second.contested ? 1.0 : 0.0;
             count++;
         }
@@ -2758,6 +2823,8 @@ RoutingProtocol::BuildState() const
     state[0] = (count > 0) ? trustSum / count : 1.0;
     state[1] = EnergyFraction();
     state[2] = std::min(1.0, speed / 20.0);
+    if (m_variant == VARIANT_DRL_PAPER || m_variant == VARIANT_DRL_SENIOR)
+        state[2] = 1.0 - state[2];
     state[3] = PredictedSurplus();
     state[4] = (count > 0) ? contested / count : 0.0;
     state[5] = WindowPdr();
@@ -2765,8 +2832,9 @@ RoutingProtocol::BuildState() const
 }
 
 void
-RoutingProtocol::NotifyDelivery(Ipv4Address dst, bool delivered, uint32_t hops)
+RoutingProtocol::NotifyDelivery(Ipv4Address dst, bool delivered, uint32_t hops, uint64_t decisionId)
 {
+    (void)dst;
     m_attempted++;
     if (delivered)
     {
@@ -2778,7 +2846,14 @@ RoutingProtocol::NotifyDelivery(Ipv4Address dst, bool delivered, uint32_t hops)
         m_deliveryWindow.pop_front();
     }
 
-    if (m_variant != VARIANT_AR_EAURP)
+    if (m_variant == VARIANT_DRL_PAPER || m_variant == VARIANT_DRL_SENIOR)
+    {
+        auto pending = m_decisionHistory.find(decisionId);
+        if (pending != m_decisionHistory.end())
+            m_tabular.Observe(pending->second.state, pending->second.action, delivered, BuildState());
+        return;
+    }
+    if (m_variant != VARIANT_AR_EAURP || !m_useCmdp)
     {
         return;
     }
@@ -2788,14 +2863,14 @@ RoutingProtocol::NotifyDelivery(Ipv4Address dst, bool delivered, uint32_t hops)
         return;
     }
 
-    auto i = m_pending.find(dst);
-    if (i == m_pending.end())
+    auto i = m_decisionHistory.find(decisionId);
+    if (i == m_decisionHistory.end())
     {
         return;
     }
 
-    // Energy actually spent on this delivery attempt, in joules: one
-    // transmission and one reception per hop at the radio's own current draw.
+    // Per-hop energy proxy for the reward. Battery reporting separately uses
+    // the real Wi-Fi energy model; this estimate is not a battery measurement.
     const double perHopJoules = 2.0e-3;
     const double energyCost = (double)hops * perHopJoules * 1000.0;
 

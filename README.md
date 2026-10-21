@@ -1,175 +1,144 @@
-# AR-EAURP — Review 2
+# AR-EAURP — native ns-3 workflow
 
-Adversarial-Resilient and Energy-Harvesting Aware EAURP. Three implementations
-and an honest comparison.
+The entire active workflow is **compiled ns-3.45 C++**: experiment selection,
+network simulation, GAN/LSTM/tabular learning/CMDP, repeated seeds,
+checkpointing, statistics, CSVs, reports and plot-script generation.
+Plots use ns-3's `Gnuplot` helper and the gnuplot renderer. Shell scripts build
+and launch the executables. There is no project Python runtime or Python
+orchestrator. Upstream ns-3 keeps its standard build dependencies.
 
-| | What it is | Source document |
-|---|---|---|
-| **A** | DRL-EAURP, re-implemented from the paper's equations (1)–(38) | `project_docs/Lekha.pdf` |
-| **B** | The senior's delivered code, logic verbatim | `project_docs/senior_code.ipynb` |
-| **C** | AR-EAURP — GAN trust defence, LSTM energy forecasting, CMDP routing | `project_docs/Date_ 24_07_26.docx` |
+## Build and run
 
-## Run it on Colab
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Abhi-R459/AR-EAURP-CN-Project/blob/main/colab/REVIEW2_FROM_GITHUB.ipynb)
-
-Then **Runtime → Run all**. Nothing to install — Colab already ships numpy,
-matplotlib, networkx, pandas and torch.
-
-> ⚠️ **This repository is private.** A Colab session holds no GitHub
-> credentials, so the badge above and the notebook's `git clone` will both fail
-> until one of these is true:
->
-> - the repository is **made public** (Settings → General → Danger Zone →
->   Change visibility) — then everything works with one click; or
-> - a fine-grained **personal access token** with read access to this repo is
->   stored in Colab Secrets (key icon, left sidebar) under the name
->   `GITHUB_TOKEN` with notebook access enabled — the clone cell picks it up
->   automatically; or
-> - you use `colab/REVIEW2_AR_EAURP.ipynb`, which needs no network at all.
->
-> Upload it manually (File → Upload notebook) and it works regardless of
-> visibility.
-
-There are two notebooks. They contain the same analysis and differ only in how
-the code reaches the session:
-
-| notebook | size | how `src/` gets there |
-|---|---|---|
-| **`colab/REVIEW2_FROM_GITHUB.ipynb`** | 35 cells, 21 KB | clones this repository, then `cd`s into it |
-| `colab/REVIEW2_AR_EAURP.ipynb` | 75 cells, 395 KB | 40 folded `%%writefile` cells that write the tree into the session |
-
-Use the first one. Use the second only if you need it to work with no network
-and no GitHub — it embeds every source file directly.
-
-> **If `src/` appears to be missing in Colab**, the setup section has not run.
-> In the GitHub notebook that is the clone cell; in the self-contained one it
-> is the block of 40 folded `%%writefile` cells, which render as an
-> empty-looking gap and are easy to scroll straight past. Run from the top, or
-> Runtime → Run all.
-
-Results checkpoint to CSV as each sweep finishes and are skipped on a re-run,
-so an interrupted Colab session resumes rather than restarting. Mount Drive
-when the notebook offers, and they survive the session entirely.
-
-## Run it locally
-
-### Peer-to-peer Flutter messenger
-
-The `app/` folder contains RelayMesh, a real nearby-device text messenger.
-It uses Wi-Fi Direct for Android-to-Android communication and Multipeer
-Connectivity for Apple-to-Apple communication. Neither path requires internet
-or a Wi-Fi router.
+Install a C++20 compiler, CMake, OpenSSL development files, curl and gnuplot.
+On macOS: `brew install cmake openssl@3 gnuplot`. On Ubuntu:
+`sudo apt-get install build-essential cmake pkg-config libssl-dev curl gnuplot-nox`.
 
 ```bash
-cd app
-flutter devices
-flutter run -d <device-id>
+bash ns3/scripts/setup.sh --download
+bash ns3/scripts/run.sh --profile=smoke
 ```
 
-See [`app/README.md`](app/README.md) for physical-device setup and transport
-limitations.
-
-### Experiments
+The default installation is `~/.cache/ar-eaurp/ns-3.45`. To use an existing
+installation:
 
 ```bash
-pip install -r requirements.txt
+export NS3_HOME=/path/to/ns-3.45
+bash ns3/scripts/setup.sh --home "$NS3_HOME"
+bash ns3/scripts/run.sh --verify=1
+bash ns3/scripts/run.sh --profile=quick
+bash ns3/scripts/run.sh --profile=full
 ```
+
+`smoke` exercises 86 configurations with one seed, `quick` uses two seeds,
+and `full` uses five. Lifetime runs have longer horizons. Results default to
+`results/ns3-native-PROFILE/`: raw checkpoints, CSVs, SVG figures, Gnuplot
+scripts, `report.md`, `report.html` and a manifest with build identity.
 
 ```bash
-python experiments/run_all.py --profile quick
+bash ns3/scripts/run.sh --profile=smoke --only=e3,e5 --out=results/native-attacks
+bash ns3/scripts/run.sh --profile=smoke --fresh=1
+bash ns3/scripts/run.sh --profile=smoke --render=0
 ```
+
+`--only` selects experiments; `--fresh=1` recomputes matching checkpoints.
+Rerunning normally resumes them. `--render=0` exports plot scripts without
+invoking gnuplot. No plots are rendered in that mode. Source, linked ns-3
+libraries and native binaries are hashed; stale builds are rejected. Raw
+checkpoint checksums reject truncated or modified contents. Each configuration
+uses the same seeds across protocols. Aggregation reports sample seed SD.
+
+## Native entry points
+
+| Executable | Responsibility |
+|---|---|
+| `ar-eaurp-sim` | One commissioning/evaluation scenario |
+| `ar-eaurp-experiments` | E1–E6 selection, repeated runs, checkpoints, aggregation, reports, plots and native integration verification |
+| `ar-eaurp-range` | PHY range calibration |
+| `test-runner --suite=ar-eaurp` | Native model unit tests |
+
+The experiment executable calls the scenario directly in the same C++
+process. It never invokes a Python script or the ns-3 Python launcher.
+Individual scenarios can also run through the compiled binary:
 
 ```bash
-python experiments/run_all.py --profile full
+"$NS3_HOME/build/scratch/ns3.45-ar-eaurp-sim-optimized" \
+  --protocol=ar-eaurp --attack=grayhole --malicious=0.3 --json=run.json
 ```
 
-`quick` (200 rounds × 2 runs) is a smoke test; `full` (400 rounds × 5 runs)
-produces the numbers to present. Add `--only e3` to run just the attack sweep,
-or `--out-dir <path>` to write results elsewhere.
+| Protocol | Behaviour |
+|---|---|
+| `aodv` | Hop-count baseline on the common custom substrate |
+| `eaurp` | Watchdog trust, energy-aware routing and revocation |
+| `drl-paper` | A: tabular Q-learning with watchdog trust |
+| `drl-senior` | B: tabular Q-learning with own endpoint-counter trust; no revocation |
+| `ar-eaurp` | C: GAN detection, LSTM harvest forecasting and CMDP/DQN routing |
+| `ns3-aodv` | Upstream AODV comparator, clean runs only |
 
-Regenerate the notebooks and the report after any code change — `src/` is the
-single source of truth and the notebooks are generated from it:
+A/B adapt the paper's global probability model to local distributed route
+discovery. B increments its receive counter on actual arrival; remote failed
+attempts are unavailable. Diversification avoids the previous next hop;
+complete node-disjoint paths are not claimed.
+
+All protocols use the same UDP/ACK traffic. X25519/HKDF/AES-GCM protects
+messages by default, adding 28 bytes per message. Per-flow deterministic keys
+are simulation fixtures provisioned before a run. Key-exchange packets and
+crypto CPU latency are not modelled in simulated time.
+
+## Experiments and measurement limits
+
+| Experiment | Sweep |
+|---|---|
+| E1 | Maximum speeds 1–20 m/s |
+| E2 | Density 60–200 nodes |
+| E3 | Blackhole, grayhole and trust poisoning; 0–50% malicious nodes |
+| E4 | Battery/harvesting energy, forecast holdouts and lifetime |
+| E5 | GAN/LSTM/CMDP/energy-excuse ablations and PDR-floor sensitivity |
+| E6 | Generated control traffic, wall time, protected-message overhead and ECC-off comparison |
+
+PDR counts measurement-window sends and their arrivals through cooldown;
+ACK loss can penalise delivered data. GAN/LSTM train only on clean
+commissioning. Check trained flags before interpreting learned results.
+LSTM holdouts use disjoint temporal intervals per node.
+
+Delay is seconds, energy joules, forecast error watts and throughput bits/s.
+Unobserved deaths are censored at the horizon. First depletion permanently
+disables the PHY, matching the former simulator. The source is an ideal
+reservoir without a capacity ceiling; charge can exceed initial charge and
+can recover after node failure. A small guard fixes ns-3.45 radio timer
+reentrancy and ensures energy-model shutdown also shuts down the PHY.
+
+Control counters count generated attempts, including attempts after PHY
+shutdown. Diagnostic drops across layers are not additive application loss
+categories. A violated CMDP target does not prove infeasibility. Wall time
+includes commissioning and reflects host runtime. Smoke results validate
+execution only; the full research sweep has not been run during migration.
+
+## Tests and Colab
 
 ```bash
-python tools/build_notebook.py && python tools/make_report.py
+"$NS3_HOME/build/utils/ns3.45-test-runner-optimized" --suite=ar-eaurp --verbose
+bash ns3/scripts/run.sh --verify=1
+bash ns3/scripts/run.sh --notebooks=1
+bash ns3/scripts/verify.sh
 ```
 
-## Why there are two tracks
+The native integration checks exercise delivery under all protocols,
+repeatability, crypto, late feedback, battery shutdown, harvesting,
+trained models, seed statistics and checkpoint integrity/resume.
 
-The senior's code is not a network simulator. `src` and `dst` are drawn at
-random every round and never connected by a path; delivery is one coin flip
-against a global average:
+Upload `colab/REVIEW2_AR_EAURP.ipynb` to Colab for an embedded source snapshot,
+or use `colab/REVIEW2_FROM_GITHUB.ipynb` for a public repository clone.
+Both notebooks contain shell-only executable cells; the Colab UI still
+uses its standard kernel. They build C++ and launch the native runner.
+Download the generated HTML report, SVGs and result folder through Colab's
+Files panel. An actual Colab execution remains unverified.
 
-```python
-success_prob = 0.45 + 0.25*avg_trust + 0.2*avg_energy + 0.1*avg_mobility
-success = random.random() < success_prob      # this is the entire "routing"
-```
+## Historical material
 
-Nothing forwards anything, so a gray-hole that drops 15% of what it relays
-cannot be expressed in that model — and the advancement is entirely about
-gray-holes. Hence:
+The Python simulation is preserved in `legacy/python/`. The intermediate
+Python ns-3 launcher and analysis tools are in `legacy/ns3-python-tooling/`.
+They are inactive. Existing `output/` and `paper/` material has been preserved
+and must not be presented as native measurements. Original senior notebooks
+remain source references.
 
-- **Track 1 (as-is)** — each implementation in its native form. Preserves the
-  senior's published numbers, which reproduce here bit-for-bit.
-- **Track 2 (common harness)** — A, B and C as routing policies on one
-  mechanistic simulator that walks every packet hop by hop, with identical
-  seeds, topology, mobility, traffic and adversary placement. This is where the
-  fair comparison and the attack sweep live.
-
-Never compare a Track 1 number with a Track 2 number; they measure different
-things. `experiments/report.py` prints the full caveat list with the results.
-
-## Layout
-
-```
-src/common/       mechanistic harness: nodes, mobility, topology, channel,
-                  energy, traffic, adversaries, metrics, the round loop
-src/routing/      routing substrate from base.pdf: PT_NID/PT_GID/PT_CREV,
-                  PFR trust with majority-vote revocation, energy-gated AODV
-                  scored by R_Score = a*T + b*E, ECC payload protection
-src/a_drl_eaurp/  A — the paper's five models, written from its equations
-src/b_senior/     B — the delivered notebook, logic untouched
-src/c_ar_eaurp/   C — threat model, GAN detector, LSTM forecaster, CMDP agent
-experiments/      E1–E6, plotting, and the comparison report
-tests/            26 numpy-only unit tests
-tools/            regenerates the Colab notebook from src/
-colab/            the deliverable, plus the senior's original notebook
-```
-
-`src/` is the single source of truth. The notebook is **generated** from it:
-
-```bash
-python tools/build_notebook.py
-```
-
-Never hand-edit `colab/REVIEW2_AR_EAURP.ipynb` — regenerate it, or the two
-will drift.
-
-## Experiments
-
-| | Sweep | Output |
-|---|---|---|
-| E1 | Speed 10k–40k, plus a realistic annex | PDR, delay, loss, throughput, lifetime |
-| E2 | Density 60–200 nodes | PDR, delay, unroutable traffic |
-| **E3** | **Malicious 0–50% × {black-hole, gray-hole, trust poisoning}** | **PDR, delay, detection TPR/FPR** |
-| E4 | Linear vs solar energy, long-horizon lifetime | lifetime, LSTM MAE vs baselines |
-| E5 | Ablation of C, and CMDP floor feasibility | per-component attribution |
-| E6 | Overhead | control packets/round, wall clock, ECC cost |
-
-E3 is the headline, and the only experiment neither base paper can run.
-
-## Verify
-
-```bash
-python -m compileall src experiments tests tools
-```
-
-```bash
-python -m pytest tests/ -q
-```
-
-The test that matters most is `test_grayhole_evades_the_trust_threshold`: it
-asserts the gray-hole's *observed* Packet Forwarding Ratio stays above
-base.pdf's 0.6 revocation threshold (measured: 0.8414, evading it by +0.24).
-If that failed, the advancement would have nothing to detect.
+The independent Flutter messenger remains in `app/`; see its README.

@@ -14,7 +14,7 @@
  * forward pass, not training.
  *
  * HONEST BASELINES. Fit() also measures a persistence forecast (next = last)
- * and a seasonal-naive forecast (next = what was seen one day ago) on the same
+ * and a window-mean forecast on the same
  * held-out split, because an LSTM that cannot beat "tomorrow looks like today"
  * has not earned its place in the protocol.
  */
@@ -86,6 +86,8 @@ class EnergyForecaster
         return m_scale;
     }
 
+    size_t ValidationSequences() const { return m_validationSequences; }
+
     size_t TrainingSequences() const
     {
         return m_sequences.size();
@@ -112,6 +114,7 @@ class EnergyForecaster
     double m_seasonalMae;
     bool m_trained;
     uint32_t m_seed;
+    size_t m_validationSequences{0};
 };
 
 } // namespace arEaurp

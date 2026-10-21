@@ -32,6 +32,7 @@
 
 #ifndef AR_EAURP_ROUTING_PROTOCOL_H
 #define AR_EAURP_ROUTING_PROTOCOL_H
+#include "ar-eaurp-tabular.h"
 
 #include "ar-eaurp-neighbor.h"
 #include "ar-eaurp-oracle.h"
@@ -80,6 +81,7 @@ struct PendingDecision
     Vec state;
     uint32_t action;
     Time taken;
+    uint64_t id{0};
 };
 
 class RoutingProtocol : public Ipv4RoutingProtocol
@@ -93,6 +95,8 @@ class RoutingProtocol : public Ipv4RoutingProtocol
         VARIANT_AODV = 0,
         VARIANT_EAURP = 1,
         VARIANT_AR_EAURP = 2,
+        VARIANT_DRL_PAPER = 3,
+        VARIANT_DRL_SENIOR = 4,
     };
 
     enum Attack
@@ -150,7 +154,17 @@ class RoutingProtocol : public Ipv4RoutingProtocol
     }
 
     /// Called by the traffic application when a flow's packet is (not) acked.
-    void NotifyDelivery(Ipv4Address dst, bool delivered, uint32_t hops);
+    void NotifyDelivery(Ipv4Address dst, bool delivered, uint32_t hops, uint64_t decisionId);
+    uint64_t DecisionId(Ipv4Address dst)
+    {
+        auto i = m_pending.find(dst);
+        if (i == m_pending.end()) return 0;
+        m_decisionHistory.at(i->second.id).taken = Simulator::Now();
+        return i->second.id;
+    }
+    void RecordEndpoint(bool sent) { m_endpointTrust.Record(sent); }
+    uint64_t QUpdates() const { return m_tabular.Updates(); }
+    size_t QStates() const { return m_tabular.States(); }
 
     /// This node's view of its own battery, as a fraction of its initial charge.
     double EnergyFraction() const;
@@ -282,6 +296,12 @@ class RoutingProtocol : public Ipv4RoutingProtocol
 
     Variant m_variant;
     Attack m_attack;
+    TabularAgent m_tabular;
+    EndpointTrust m_endpointTrust;
+    std::map<Ipv4Address, double> m_endpointReports;
+    bool m_useGan{true};
+    bool m_useLstm{true};
+    bool m_useCmdp{true};
 
     uint32_t m_requestId;
     uint32_t m_seqNo;
@@ -295,6 +315,8 @@ class RoutingProtocol : public Ipv4RoutingProtocol
     std::map<Ipv4Address, uint8_t> m_policyInUse;   //!< action chosen per destination
     std::map<Ipv4Address, Ipv4Address> m_lastNextHop;
     std::map<Ipv4Address, PendingDecision> m_pending;
+    std::map<uint64_t, PendingDecision> m_decisionHistory;
+    uint64_t m_nextDecision{0};
     std::map<Ipv4Address, std::set<Ipv4Address>> m_crevHeard; //!< subject -> issuers
     std::set<std::pair<Ipv4Address, uint32_t>> m_floodSeen;
 
@@ -326,6 +348,7 @@ class RoutingProtocol : public Ipv4RoutingProtocol
     uint8_t m_gidTtl;
     uint32_t m_netDiameter;
     uint32_t m_maxQueueLen;
+    uint32_t m_detectMinWindow;
     bool m_localRepair;
     bool m_floodSuppression;
     uint32_t m_minAdditionalCoverage;

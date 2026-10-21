@@ -1,6 +1,8 @@
 # AR-EAURP: Adversarial-Resilient, Energy-harvesting-Aware Ubiquitous Routing
 # Protocol -- ns-3 contrib module.
 
+find_package(OpenSSL REQUIRED COMPONENTS Crypto)
+
 build_lib(
   LIBNAME ar-eaurp
   SOURCE_FILES
@@ -11,6 +13,11 @@ build_lib(
     model/ar-eaurp-detector.cc
     model/ar-eaurp-forecaster.cc
     model/ar-eaurp-cmdp.cc
+    model/ar-eaurp-tabular.cc
+    model/ar-eaurp-crypto.cc
+    model/ar-eaurp-scenario.cc
+    model/ar-eaurp-experiments.cc
+    model/ar-eaurp-results.cc
     model/ar-eaurp-oracle.cc
     model/ar-eaurp-routing-protocol.cc
     model/solar-energy-harvester.cc
@@ -25,6 +32,11 @@ build_lib(
     model/ar-eaurp-detector.h
     model/ar-eaurp-forecaster.h
     model/ar-eaurp-cmdp.h
+    model/ar-eaurp-tabular.h
+    model/ar-eaurp-crypto.h
+    model/ar-eaurp-scenario.h
+    model/ar-eaurp-experiments.h
+    model/ar-eaurp-results.h
     model/ar-eaurp-oracle.h
     model/ar-eaurp-routing-protocol.h
     model/solar-energy-harvester.h
@@ -32,6 +44,8 @@ build_lib(
     helper/ar-eaurp-helper.h
     helper/ar-traffic-helper.h
   LIBRARIES_TO_LINK
+    OpenSSL::Crypto
+    ${CMAKE_DL_LIBS}
     ${libcore}
     ${libnetwork}
     ${libinternet}
@@ -40,6 +54,7 @@ build_lib(
     ${libpropagation}
     ${libenergy}
     ${libapplications}
+    ${libaodv}
     ${libflow-monitor}
     ${libstats}
   TEST_SOURCES

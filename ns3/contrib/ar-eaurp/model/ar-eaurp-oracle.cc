@@ -6,6 +6,7 @@
 #include "ns3/log.h"
 #include "ns3/simulator.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace ns3
@@ -33,6 +34,7 @@ Oracle::Reset(uint32_t nNodes)
 
     m_appTx = 0;
     m_appRx = 0;
+    m_feedbackSuccess = m_feedbackTimeout = 0;
     m_appTxBytes = 0;
     m_appRxBytes = 0;
     m_delaySum = 0.0;
@@ -57,13 +59,16 @@ Oracle::Reset(uint32_t nNodes)
     m_linkFailures = 0;
     m_linkFailuresData = 0;
     m_localRepairs = 0;
+    m_cryptoPackets = m_cryptoBytes = m_cryptoFailures = 0;
 
     m_contested.clear();
     m_revocations.clear();
+    m_detectorScores.clear();
 
     m_death.assign(nNodes, Seconds(0));
     m_dead = 0;
     m_measurementStart = Seconds(0);
+    m_measurementEnd = Time::Max();
 }
 
 void
@@ -104,7 +109,7 @@ Oracle::IsMalicious(Ipv4Address addr) const
 bool
 Oracle::Measuring() const
 {
-    return Simulator::Now() >= m_measurementStart;
+    return Simulator::Now() >= m_measurementStart && Simulator::Now() < m_measurementEnd;
 }
 
 void
@@ -121,7 +126,8 @@ Oracle::CountAppTx(uint32_t bytes)
 void
 Oracle::CountAppRx(uint32_t bytes, Time delay, uint32_t hops)
 {
-    if (!Measuring())
+    const Time sent = Simulator::Now() - delay;
+    if (sent < m_measurementStart || sent >= m_measurementEnd)
     {
         return;
     }
@@ -140,6 +146,13 @@ Oracle::CountForward()
     {
         m_forwards++;
     }
+}
+
+void Oracle::CountAppFeedback(bool delivered, Time sent)
+{
+    if (sent < m_measurementStart || sent >= m_measurementEnd) return;
+    if (delivered) ++m_feedbackSuccess;
+    else ++m_feedbackTimeout;
 }
 
 void
@@ -277,6 +290,61 @@ Oracle::CountLocalRepair()
 }
 
 void
+Oracle::RecordDetectorScore(double score, bool malicious)
+{
+    if (Measuring())
+    {
+        m_detectorScores.emplace_back(score, malicious);
+    }
+}
+
+double
+Oracle::DetectorAuc() const
+{
+    // Rank-based AUC: the probability that a randomly chosen hostile window
+    // scores above a randomly chosen honest one.
+    std::vector<std::pair<double, bool>> sorted = m_detectorScores;
+    if (sorted.size() < 2)
+    {
+        return 0.5;
+    }
+    std::sort(sorted.begin(), sorted.end());
+
+    double positives = 0.0;
+    double negatives = 0.0;
+    double rankSum = 0.0;
+    size_t i = 0;
+    while (i < sorted.size())
+    {
+        size_t j = i;
+        while (j + 1 < sorted.size() && sorted[j + 1].first == sorted[i].first)
+        {
+            j++;
+        }
+        // Average rank over ties, so identical scores cannot inflate the result.
+        const double averageRank = 0.5 * ((double)(i + 1) + (double)(j + 1));
+        for (size_t k = i; k <= j; ++k)
+        {
+            if (sorted[k].second)
+            {
+                rankSum += averageRank;
+                positives += 1.0;
+            }
+            else
+            {
+                negatives += 1.0;
+            }
+        }
+        i = j + 1;
+    }
+    if (positives < 1.0 || negatives < 1.0)
+    {
+        return 0.5;
+    }
+    return (rankSum - positives * (positives + 1.0) / 2.0) / (positives * negatives);
+}
+
+void
 Oracle::ReportContested(Ipv4Address observer, Ipv4Address subject)
 {
     m_contested[observer].insert(subject);
@@ -352,6 +420,7 @@ Oracle::DetectionRates(uint32_t minWitnesses,
 void
 Oracle::ReportNodeDeath(uint32_t nodeId, Time when)
 {
+    if (when > m_measurementEnd) return;
     if (nodeId < m_death.size() && m_death[nodeId] == Seconds(0))
     {
         m_death[nodeId] = when;
@@ -395,12 +464,23 @@ Oracle::ClearModels()
     m_agent.reset();
 }
 
+void Oracle::CountCryptoTx(uint32_t overhead)
+{
+    if (Measuring()) { ++m_cryptoPackets; m_cryptoBytes += overhead; }
+}
+void Oracle::CountCryptoFailure() { if (Measuring()) ++m_cryptoFailures; }
+
 std::map<std::string, double>
 Oracle::Summary() const
 {
     std::map<std::string, double> out;
     out["app_tx"] = (double)m_appTx;
+    out["crypto_packets"] = m_cryptoPackets;
+    out["crypto_overhead_bytes"] = m_cryptoBytes;
+    out["crypto_auth_failures"] = m_cryptoFailures;
     out["app_rx"] = (double)m_appRx;
+    out["app_feedback_success"] = m_feedbackSuccess;
+    out["app_feedback_timeout"] = m_feedbackTimeout;
     out["pdr"] = (m_appTx > 0) ? (double)m_appRx / (double)m_appTx : 0.0;
     out["mean_delay_s"] = (m_appRx > 0) ? m_delaySum / (double)m_appRx : 0.0;
     if (m_appRx > 1)
@@ -443,6 +523,15 @@ Oracle::Summary() const
     out["route_discovery_failures"] = (double)m_discoveryFailures;
     out["dead_nodes"] = (double)m_dead;
     out["first_death_s"] = FirstDeath().GetSeconds();
+    std::vector<Time> deaths;
+    for (Time t : m_death) if (t > Seconds(0)) deaths.push_back(t);
+    std::sort(deaths.begin(), deaths.end());
+    const size_t needed = static_cast<size_t>(std::ceil(0.8 * m_nNodes));
+    out["eighty_pct_death_observed"] = needed > 0 && deaths.size() >= needed ? 1.0 : 0.0;
+    out["eighty_pct_dead_s"] = needed > 0 && deaths.size() >= needed ? deaths[needed - 1].GetSeconds() : 0.0;
+
+    out["detector_auc"] = DetectorAuc();
+    out["detector_windows"] = (double)m_detectorScores.size();
 
     double tpr = 0.0;
     double fpr = 0.0;

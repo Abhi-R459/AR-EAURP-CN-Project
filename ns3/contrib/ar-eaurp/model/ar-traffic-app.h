@@ -22,6 +22,7 @@
 
 #ifndef AR_TRAFFIC_APP_H
 #define AR_TRAFFIC_APP_H
+#include "ar-eaurp-crypto.h"
 
 #include "ns3/application.h"
 #include "ns3/event-id.h"
@@ -31,6 +32,7 @@
 #include "ns3/socket.h"
 
 #include <map>
+#include <memory>
 
 namespace ns3
 {
@@ -104,7 +106,10 @@ class ArTrafficApp : public Application
     ArTrafficApp();
     ~ArTrafficApp() override;
 
-    int64_t AssignStreams(int64_t stream);
+    int64_t AssignStreams(int64_t stream) override;
+    void SetCipher(const CryptoBox::Key& key, uint32_t prefix)
+    { m_cipher = std::make_unique<CryptoBox>(key, prefix); }
+    void StopSending() { m_sendEvent.Cancel(); }
 
     uint64_t Sent() const
     {
@@ -123,9 +128,12 @@ class ArTrafficApp : public Application
     void Send();
     void HandleRead(Ptr<Socket> socket);
     void AckTimeout(uint64_t seq);
-    void ReportDelivery(bool delivered, uint32_t hops);
+    void ReportDelivery(bool delivered, uint32_t hops, uint64_t sequence, Time sent);
+    void RecordDecision(uint64_t sequence);
+    Ptr<Packet> Protect(Ptr<Packet> packet, uint64_t sequence);
 
     Ptr<Socket> m_socket;
+    std::unique_ptr<CryptoBox> m_cipher;
     Ipv4Address m_remote;
     uint16_t m_port;
     Time m_interval;
@@ -137,6 +145,7 @@ class ArTrafficApp : public Application
 
     EventId m_sendEvent;
     std::map<uint64_t, EventId> m_ackTimers;
+    std::map<uint64_t, uint64_t> m_decisionIds;
     uint64_t m_seq;
     uint64_t m_sent;
     uint64_t m_received;

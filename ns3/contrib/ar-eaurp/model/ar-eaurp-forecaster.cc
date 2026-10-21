@@ -51,17 +51,19 @@ EnergyForecaster::AddSample(uint32_t nodeId, double watts, double dayPhase)
 double
 EnergyForecaster::Fit(uint32_t epochs, double lr)
 {
-    // Normalise by the largest power ever seen, so the network works on values
+    m_trained = false;
+    m_validationSequences = 0;
+    m_lstmMae = m_persistenceMae = m_seasonalMae = 0.0;
+    // Normalise using training intervals only, so validation values cannot leak.
+    // The network works on values
     // of order one regardless of the panel rating.
     double maxWatts = 0.0;
     size_t total = 0;
     for (const auto& trace : m_traces)
     {
         total += trace.size();
-        for (const auto& s : trace)
-        {
-            maxWatts = std::max(maxWatts, s.watts);
-        }
+        const size_t cutoff = static_cast<size_t>(0.7 * trace.size());
+        for (size_t i = 0; i < cutoff; ++i) maxWatts = std::max(maxWatts, trace[i].watts);
     }
     if (maxWatts <= 0.0 || total < (size_t)(m_inputLen + m_horizon) * 4)
     {
@@ -71,14 +73,18 @@ EnergyForecaster::Fit(uint32_t epochs, double lr)
     m_scale = maxWatts;
 
     m_sequences.clear();
+    decltype(m_sequences) holdout;
     for (const auto& trace : m_traces)
     {
         if (trace.size() < (size_t)(m_inputLen + m_horizon))
         {
             continue;
         }
+        const size_t cutoff = static_cast<size_t>(0.7 * trace.size());
         for (size_t start = 0; start + m_inputLen + m_horizon <= trace.size(); ++start)
         {
+            const bool training = start + m_inputLen + m_horizon <= cutoff;
+            if (!training && start < cutoff) continue; // purge overlapping windows
             std::vector<Vec> seq;
             seq.reserve(m_inputLen);
             for (uint32_t t = 0; t < m_inputLen; ++t)
@@ -94,19 +100,21 @@ EnergyForecaster::Fit(uint32_t epochs, double lr)
                 target += trace[start + m_inputLen + t].watts;
             }
             target /= (double)m_horizon * m_scale;
-            m_sequences.emplace_back(seq, target);
+            if (training) m_sequences.emplace_back(seq, target);
+            else holdout.emplace_back(seq, target);
         }
     }
 
-    if (m_sequences.size() < 20)
+    m_validationSequences = holdout.size();
+    if (m_sequences.size() < 20 || holdout.empty())
     {
         NS_LOG_WARN("too few training sequences: " << m_sequences.size());
         return 0.0;
     }
 
-    // Chronological split: the last 20% is held out, so the model is never
-    // scored on windows it trained on.
-    const size_t split = (size_t)(0.8 * m_sequences.size());
+    // Each node contributes its earlier 70% to training and its later 30%
+    // to validation. No input or target sample occurs in both groups.
+    const size_t split = m_sequences.size();
     std::mt19937 rng(m_seed + 17);
     std::vector<size_t> order(split);
     std::iota(order.begin(), order.end(), 0);
@@ -127,9 +135,8 @@ EnergyForecaster::Fit(uint32_t epochs, double lr)
     double persistErr = 0.0;
     double seasonalErr = 0.0;
     size_t count = 0;
-    for (size_t idx = split; idx < m_sequences.size(); ++idx)
+    for (const auto& seq : holdout)
     {
-        const auto& seq = m_sequences[idx];
         const double truth = seq.second * m_scale;
         const Vec y = m_lstm.Forward(seq.first);
         lstmErr += std::fabs(y[0] * m_scale - truth);
@@ -137,9 +144,8 @@ EnergyForecaster::Fit(uint32_t epochs, double lr)
         // persistence: the next horizon looks like the last sample
         persistErr += std::fabs(seq.first.back()[0] * m_scale - truth);
 
-        // seasonal naive: the same phase of the day, one period earlier. The
-        // window is shorter than a day, so the closest available proxy is the
-        // mean of the window, which is what a node without a model would use.
+        // Window-mean baseline. A true seasonal baseline requires one day
+        // of history, which this input window does not contain.
         double windowMean = 0.0;
         for (const auto& step : seq.first)
         {

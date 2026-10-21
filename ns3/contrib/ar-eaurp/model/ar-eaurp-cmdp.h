@@ -17,10 +17,9 @@
  *   r      = +/-1 - w_e * energy_cost - lambda * max(0, floor - PDR_window) * C
  *   lambda <- clip(lambda + eta * (floor - PDR_window), 0, lambda_max)
  *
- * lambda climbing to its ceiling while the constraint is still violated is
- * itself a result worth reporting: it is direct evidence that the floor is
- * infeasible at that attack strength rather than merely unmet, which is the
- * question Review 1 raised about the 90% claim.
+ * Report lambda and observed violations together with achieved PDR. Reaching
+ * the multiplier ceiling shows an unmet target under this learned policy;
+ * it does not prove that the constraint is mathematically infeasible.
  *
  * The policy is shared across the fleet (one set of parameters, per-node
  * states and actions) -- the usual parameter-sharing arrangement for

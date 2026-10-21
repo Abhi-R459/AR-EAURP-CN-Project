@@ -510,7 +510,8 @@ NeighborTrust::Disagreement(Ipv4Address subject) const
 void
 NeighborTrust::ExtractFeatures(std::vector<Ipv4Address>& subjects,
                                std::vector<std::vector<double>>& features,
-                               bool updateSnapshot)
+                               bool updateSnapshot,
+                               uint32_t minWindow)
 {
     subjects.clear();
     features.clear();
@@ -519,7 +520,7 @@ NeighborTrust::ExtractFeatures(std::vector<Ipv4Address>& subjects,
     {
         NeighborEntry& e = kv.second;
         const double dRequested = e.requested - e.prevRequested;
-        if (e.requested < (double)m_minObservations || dRequested <= 0.0)
+        if (e.requested < (double)m_minObservations || dRequested < (double)minWindow)
         {
             continue;
         }
@@ -556,6 +557,12 @@ NeighborTrust::ExtractFeatures(std::vector<Ipv4Address>& subjects,
         f[5] = std::min(2.0, latMean / 0.1);
         f[6] = std::min(2.0, latStd / 0.1);
         f[7] = Disagreement(kv.first);
+        // The differential itself. A selective-forwarding gray-hole is defined
+        // by this one number being large while every individual ratio stays
+        // defensible; giving it to the detector directly, rather than asking it
+        // to infer the difference of two noisy columns, is what makes the
+        // attack separable from a handful of observations.
+        f[8] = dropLarge - dropSmall;
 
         for (auto& v : f)
         {

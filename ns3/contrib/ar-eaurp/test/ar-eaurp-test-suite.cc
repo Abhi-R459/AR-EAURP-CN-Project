@@ -8,6 +8,10 @@
 #include "ns3/ar-eaurp-neighbor.h"
 #include "ns3/ar-eaurp-nnet.h"
 #include "ns3/ar-eaurp-packet.h"
+#include "ns3/ar-eaurp-oracle.h"
+#include "ns3/ar-eaurp-tabular.h"
+#include "ns3/ar-eaurp-crypto.h"
+#include "ns3/ar-eaurp-forecaster.h"
 #include "ns3/packet.h"
 #include "ns3/test.h"
 
@@ -203,6 +207,92 @@ class ArEaurpGrayholeFeatureTestCase : public TestCase
     }
 };
 
+class ArEaurpForecastSplitTestCase : public TestCase
+{
+  public:
+    ArEaurpForecastSplitTestCase() : TestCase("forecast validation requires disjoint temporal windows per node") {}
+    void DoRun() override
+    {
+        EnergyForecaster shortTrace(4, 2, 8, 7);
+        for (uint32_t node = 0; node < 10; ++node)
+            for (uint32_t t = 0; t < 9; ++t) shortTrace.AddSample(node, 0.2 + 0.01 * t, t / 100.0);
+        shortTrace.Fit(1, 0.001);
+        NS_TEST_EXPECT_MSG_EQ(shortTrace.IsTrained(), false,
+                              "many short nodes cannot substitute for a non-overlapping temporal validation interval");
+    }
+};
+
+class ArEaurpCryptoTestCase : public TestCase
+{
+  public:
+    ArEaurpCryptoTestCase() : TestCase("X25519 peers agree and authenticated payloads reject tampering") {}
+    void DoRun() override
+    {
+        CryptoBox::Key a{}, b{};
+        a.fill(7); b.fill(19);
+        const auto ka = CryptoBox::Agree(a, CryptoBox::PublicKey(b));
+        const auto kb = CryptoBox::Agree(b, CryptoBox::PublicKey(a));
+        NS_TEST_EXPECT_MSG_EQ(ka == kb, true, "both endpoints derive the same key");
+        CryptoBox sender(ka, 1), receiver(kb, 2);
+        std::vector<uint8_t> clear{0, 1, 2, 3, 255};
+        auto wire = sender.Seal(clear, 42);
+        std::vector<uint8_t> decoded;
+        NS_TEST_EXPECT_MSG_EQ(receiver.Open(wire, decoded), true, "authenticated message opens");
+        NS_TEST_EXPECT_MSG_EQ(decoded == clear, true, "payload survives");
+        NS_TEST_EXPECT_MSG_EQ(wire.size(), 33u, "12-byte nonce and 16-byte tag traverse the radio");
+        wire.back() ^= 1;
+        NS_TEST_EXPECT_MSG_EQ(receiver.Open(wire, decoded), false, "tampering fails authentication");
+        NS_TEST_EXPECT_MSG_EQ(decoded.empty(), true, "failed authentication releases no plaintext");
+    }
+};
+
+class ArEaurpTabularTestCase : public TestCase
+{
+  public:
+    ArEaurpTabularTestCase() : TestCase("tabular feedback changes routes and endpoint trust uses endpoint counters") {}
+    void DoRun() override
+    {
+        TabularAgent agent;
+        Vec state{1.0, 0.8, 0.5};
+        NS_TEST_EXPECT_MSG_EQ(agent.Act(state, 0.5, 1), 0u, "ties exploit");
+        agent.Observe(state, 0, false, state);
+        NS_TEST_EXPECT_MSG_EQ(agent.Act(state, 0.5, 0), 1u, "failure favours the alternative");
+        agent.Observe(state, 1, true, state);
+        NS_TEST_EXPECT_MSG_EQ(agent.Act(state, 0.5, 0), 1u, "delivery reinforces exploration");
+        NS_TEST_EXPECT_MSG_EQ(agent.Act(state, 0.01, 0), 0u, "epsilon permits a random action");
+        EndpointTrust trust;
+        trust.Record(false);
+        NS_TEST_EXPECT_MSG_EQ_TOL(trust.Trust(), 0.7, 1e-9, "a receive alone reduces endpoint trust");
+        trust.Record(true);
+        NS_TEST_EXPECT_MSG_EQ_TOL(trust.Trust(), 0.79, 1e-9, "endpoint send ratio is smoothed");
+    }
+};
+
+class ArEaurpMeasurementTestCase : public TestCase
+{
+  public:
+    ArEaurpMeasurementTestCase() : TestCase("warmup packets do not inflate evaluation PDR") {}
+    void DoRun() override
+    {
+        Oracle& oracle = Oracle::Get();
+        oracle.Reset(2);
+        oracle.SetMeasurementStart(Seconds(10));
+        Simulator::Schedule(Seconds(9), [&oracle]() { oracle.CountAppTx(512); });
+        Simulator::Schedule(Seconds(11), [&oracle]() {
+            oracle.CountAppRx(512, Seconds(2), 1); // sent before the measurement
+            oracle.CountAppTx(512);
+        });
+        Simulator::Schedule(Seconds(12), [&oracle]() {
+            oracle.CountAppRx(512, Seconds(1), 1);
+        });
+        Simulator::Run();
+        NS_TEST_EXPECT_MSG_EQ(oracle.AppTx(), 1u, "only the evaluation send counts");
+        NS_TEST_EXPECT_MSG_EQ(oracle.AppRx(), 1u, "only its matching receive counts");
+        NS_TEST_EXPECT_MSG_EQ_TOL(oracle.Summary().at("pdr"), 1.0, 1e-9, "PDR is bounded");
+        Simulator::Destroy();
+    }
+};
+
 class ArEaurpTestSuite : public TestSuite
 {
   public:
@@ -213,6 +303,10 @@ class ArEaurpTestSuite : public TestSuite
         AddTestCase(new ArEaurpMlpTestCase, TestCase::Duration::QUICK);
         AddTestCase(new ArEaurpLstmTestCase, TestCase::Duration::QUICK);
         AddTestCase(new ArEaurpGrayholeFeatureTestCase, TestCase::Duration::QUICK);
+        AddTestCase(new ArEaurpMeasurementTestCase, TestCase::Duration::QUICK);
+        AddTestCase(new ArEaurpTabularTestCase, TestCase::Duration::QUICK);
+        AddTestCase(new ArEaurpCryptoTestCase, TestCase::Duration::QUICK);
+        AddTestCase(new ArEaurpForecastSplitTestCase, TestCase::Duration::QUICK);
     }
 };
 
