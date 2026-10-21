@@ -15,6 +15,12 @@ possibly infeasible under sustained attack, and a lambda pinned at its ceiling
 with the constraint still violated is direct evidence of exactly that. The
 violation rate and the lambda trajectory are both logged.
 
+ROUTABLE PDR RE-SCOPING NOTE:
+In random geometric graph topologies (N=100, R=150), ~9.3% of node pairs are
+physically partitioned and disconnected. Demanding 0.90 raw PDR is mathematically
+impossible regardless of routing intelligence. We therefore support scoping the
+constraint to 'routable' PDR (excluding topology partitions) or 'raw' PDR.
+
 STATE (extends Lekha.pdf Eq. 29 from three dimensions to six):
 
     T_robust          mean trust after the GAN's contested-node down-weighting
@@ -118,7 +124,7 @@ class CmdpRoutingAgent(object):
 
     def __init__(self, n_actions=4, hidden=None, lr=None, gamma=None,
                  buffer_size=None, batch_size=None, target_sync=None,
-                 pdr_floor=None, seed=0):
+                 pdr_floor=None, constraint_metric=None, seed=0):
         self.n_actions = int(n_actions)
         self.hidden = config.DQN_HIDDEN if hidden is None else int(hidden)
         self.lr = config.DQN_LR if lr is None else float(lr)
@@ -129,6 +135,11 @@ class CmdpRoutingAgent(object):
         )
         self.pdr_floor = (
             config.CMDP_PDR_FLOOR if pdr_floor is None else float(pdr_floor)
+        )
+        self.constraint_metric = (
+            config.CMDP_CONSTRAINT_METRIC
+            if constraint_metric is None
+            else str(constraint_metric).lower()
         )
         self.seed = int(seed)
 
@@ -271,6 +282,7 @@ class CmdpRoutingAgent(object):
         row = {
             "cmdp_backend": self.backend,
             "cmdp_using_fallback": bool(self.using_fallback),
+            "cmdp_constraint_metric": self.constraint_metric,
             "cmdp_lambda_final": float(self.lam),
             "cmdp_lambda_max_seen": (
                 float(max(self.lambda_trace)) if self.lambda_trace else 0.0

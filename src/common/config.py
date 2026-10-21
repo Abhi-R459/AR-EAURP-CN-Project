@@ -152,6 +152,7 @@ MAX_ENERGY_CAP = 120.0         # battery cannot exceed this
 
 # CMDP -- docx step 4
 CMDP_PDR_FLOOR = 0.90
+CMDP_CONSTRAINT_METRIC = "routable"  # 'routable' (isolates protocol from graph partition) or 'raw'
 CMDP_WINDOW = 100              # rounds in the running PDR window
 CMDP_PENALTY = 5.0
 CMDP_LAMBDA_LR = 0.05

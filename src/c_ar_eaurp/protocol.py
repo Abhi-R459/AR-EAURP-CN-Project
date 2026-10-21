@@ -263,6 +263,13 @@ class ArEaurpPolicy(RoutingPolicy):
         if self.use_lstm and self._surplus is not None:
             surplus = float(np.clip(self._surplus[alive].mean() * 10.0, 0.0, 1.0))
 
+        metric_choice = getattr(self.agent, "constraint_metric", "routable")
+        pdr_val = (
+            float(sim.metrics.window_pdr_routable())
+            if metric_choice == "routable"
+            else float(sim.metrics.window_pdr())
+        )
+
         return np.array(
             [
                 float(trust[alive].mean()),
@@ -270,7 +277,7 @@ class ArEaurpPolicy(RoutingPolicy):
                 float(nodes.mobility_factor()[alive].mean()),
                 surplus,
                 float(nodes.contested.mean()),
-                float(sim.metrics.window_pdr()),
+                pdr_val,
             ],
             dtype=np.float32,
         )
@@ -369,7 +376,12 @@ class ArEaurpPolicy(RoutingPolicy):
         state, action = self._pending
 
         energy_cost = float(hops) * (config.ENERGY_TX + config.ENERGY_RX)
-        pdr_window = sim.metrics.window_pdr()
+        metric_choice = getattr(self.agent, "constraint_metric", "routable")
+        pdr_window = (
+            sim.metrics.window_pdr_routable()
+            if metric_choice == "routable"
+            else sim.metrics.window_pdr()
+        )
 
         if self.use_cmdp:
             reward, violation = self.agent.shaped_reward(
@@ -385,7 +397,13 @@ class ArEaurpPolicy(RoutingPolicy):
 
     def on_round_end(self, sim, round_idx):
         if self.use_cmdp and round_idx % 10 == 0:
-            self.agent.update_lambda(sim.metrics.window_pdr())
+            metric_choice = getattr(self.agent, "constraint_metric", "routable")
+            metric_val = (
+                sim.metrics.window_pdr_routable()
+                if metric_choice == "routable"
+                else sim.metrics.window_pdr()
+            )
+            self.agent.update_lambda(metric_val)
 
     def detected_mask(self, sim):
         """C flags a node either by GAN contest or by EAURP revocation."""

@@ -382,3 +382,24 @@ def test_blackhole_hurts_delivery():
     ).run()
     assert attacked["pdr"] < clean["pdr"]
     assert attacked["loss_malicious_drop"] > 0
+
+
+def test_routable_window_ignores_unroutable_topology_partition():
+    m = metrics.RunMetrics(10)
+    pkt = traffic.Packet(pid=0, src=0, dst=1, size=512, created_round=0)
+    m.record_sent(pkt)
+    m.record_delivered(pkt, delay_ms=10.0, hops=2)
+    assert m.window_pdr() == 1.0
+    assert m.window_pdr_routable() == 1.0
+
+    # Loss due to topology partition (no route exists)
+    m.record_sent(pkt)
+    m.record_lost(pkt, reason=metrics.LOSS_NO_ROUTE)
+    assert m.window_pdr() == 0.5
+    assert m.window_pdr_routable() == 1.0
+
+    # Loss due to malicious drop
+    m.record_sent(pkt)
+    m.record_lost(pkt, reason=metrics.LOSS_MALICIOUS)
+    assert abs(m.window_pdr() - 1.0 / 3.0) < 1e-6
+    assert abs(m.window_pdr_routable() - 0.5) < 1e-6

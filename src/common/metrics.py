@@ -55,6 +55,7 @@ class RunMetrics(object):
 
         # Rolling window used by the CMDP constraint and by the DRL state.
         self._window = []
+        self._routable_window = []
         self._window_size = 100
 
         self.detection = {
@@ -74,6 +75,7 @@ class RunMetrics(object):
         self.total_delay += float(delay_ms)
         self.total_hops += int(hops)
         self._push_window(1.0)
+        self._push_routable_window(1.0)
 
     def record_lost(self, packet, reason):
         if reason not in self.losses:
@@ -81,17 +83,30 @@ class RunMetrics(object):
         self.losses[reason] += 1
         self.bytes_lost += int(packet.size)
         self._push_window(0.0)
+        if reason != LOSS_NO_ROUTE:
+            self._push_routable_window(0.0)
 
     def _push_window(self, outcome):
         self._window.append(float(outcome))
         if len(self._window) > self._window_size:
             self._window.pop(0)
 
+    def _push_routable_window(self, outcome):
+        self._routable_window.append(float(outcome))
+        if len(self._routable_window) > self._window_size:
+            self._routable_window.pop(0)
+
     def window_pdr(self, default=1.0):
         """Delivery ratio over the recent window, used by the CMDP constraint."""
         if not self._window:
             return float(default)
         return float(sum(self._window) / len(self._window))
+
+    def window_pdr_routable(self, default=1.0):
+        """Delivery ratio over routable packets in the recent window."""
+        if not self._routable_window:
+            return float(default)
+        return float(sum(self._routable_window) / len(self._routable_window))
 
     def record_cmdp_check(self, satisfied):
         self.cmdp_checks += 1
