@@ -56,6 +56,7 @@ def build_comparison(out_dir=None):
         "e3": "e3_attack.csv",
         "e4": "e4_energy.csv",
         "e4b": "e4b_lifetime.csv",
+        "e4c": "e4c_lstm_accuracy.csv",
         "e5": "e5_ablation.csv",
         "e5b": "e5b_cmdp_floor.csv",
         "e6": "e6_overhead.csv",
@@ -138,6 +139,18 @@ def build_comparison(out_dir=None):
                 per_policy[policy] = points
         attacks[attack] = per_policy
     report["track2_attack"] = attacks
+
+    # -- LSTM forecast evaluation -----------------------------------------
+    if data.get("e4c"):
+        row = data["e4c"][0]
+        report["lstm_eval"] = {
+            "lstm_mae": float(row.get("lstm_mae", 0.0) or 0.0),
+            "persistence_mae": float(row.get("persistence_mae", 0.0) or 0.0),
+            "seasonal_naive_mae": float(row.get("seasonal_naive_mae", 0.0) or 0.0),
+            "beats_seasonal_naive": str(row.get("beats_seasonal_naive", "")).lower() == "true",
+            "improvement": float(row.get("improvement_over_best_baseline", 0.0) or 0.0),
+            "epochs": int(float(row.get("lstm_epochs_run", 0) or 0)),
+        }
 
     # -- ablation and CMDP feasibility ------------------------------------
     if data["e5"]:
@@ -270,6 +283,17 @@ def print_report(report):
             if recalls:
                 print("    {:30s} mean detection recall under attack: {:.2f}".format(
                     policy[:30], float(np.mean(recalls))))
+
+    # ---- forecast accuracy ----
+    if report.get("lstm_eval"):
+        eval_info = report["lstm_eval"]
+        print()
+        print("LSTM ENERGY FORECAST (evaluated against naive baselines)")
+        print("  LSTM MAE:           {:.5f}".format(eval_info["lstm_mae"]))
+        print("  Seasonal Naive MAE: {:.5f}".format(eval_info["seasonal_naive_mae"]))
+        print("  Persistence MAE:    {:.5f}".format(eval_info["persistence_mae"]))
+        print("  Beats Seasonal:     {0} ({1:+.1f}%)".format(
+            eval_info["beats_seasonal_naive"], eval_info["improvement"] * 100.0))
 
     # ---- ablation ----
     if report.get("ablation"):

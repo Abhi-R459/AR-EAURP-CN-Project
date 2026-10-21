@@ -212,7 +212,7 @@ QUICK = Profile(
     runs=2,
     packets_per_round=4,
     gan_epochs=60,
-    lstm_epochs=10,
+    lstm_epochs=25,
 )
 
 FULL = Profile(
