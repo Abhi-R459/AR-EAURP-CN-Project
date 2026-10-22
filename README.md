@@ -169,7 +169,8 @@ the planned five-run density sweep or establish protocol superiority.
 ## Latest review results and evidence
 
 The native `review` profile uses ns-3.45, 24 nodes, six CBR flows, a 420 m
-square area, 120 s evaluation, 20 s warm-up, and five matched run numbers
+square area, a 120 s scenario including 20 s warm-up (**100 s measured**),
+10 s cooldown, and five matched run numbers
 (master seed 20260909; runs 1–5). AR-EAURP receives a separate 240 s clean
 commissioning phase with 120 GAN and 30 LSTM epochs. This is a shorter review
 profile than the 400 s full-profile evaluation.
@@ -203,7 +204,12 @@ the study README so they are not mixed with the held-out comparison.
 The report folder is included in the repository as reproducibility evidence:
 
 - [Current research paper (Word)](AR_EAURP_Research_Paper.docx)
+- [Research paper PDF preview — 16 pages](AR_EAURP_Research_Paper_Preview.pdf)
+- [Complete tests and findings (Word)](AR_EAURP_Test_Results_and_Findings_Final.docx)
+- [Tests and findings PDF preview — 27 pages](AR_EAURP_Test_Results_and_Findings_Final_Preview.pdf)
 - [Editable research-paper source](paper/AR_EAURP_Research_Paper.md)
+- [Editable test-report source](paper/AR_EAURP_Test_Results_and_Findings.md)
+- [Document generation and layout workflow](paper/README.md)
 - [Paper-style report (HTML)](results/ns3-native-paper-review/paper_results.html)
 - [Paper-style report (Markdown)](results/ns3-native-paper-review/paper_results.md)
 - [Study settings and completion manifest](results/ns3-native-paper-review/study_settings.json)
@@ -222,6 +228,16 @@ checkpoints. The root `manifest.json` records the original C++ batch selection
 (`e3,e4,e5,e6`); the final E1/E2 data were also aggregated from their verified
 checkpoint sets. Rebuild the report from its folder using
 `python generate_paper_report.py`.
+
+The current manuscript explains the native implementation, nine detector features,
+clean commissioning, forecasting fallback, shared CMDP policy, comparator
+adaptations, statistical methods, all experiment families, and limitations. The
+companion report retains all 180 E3 pairwise contrasts and 13 exploratory
+optimization groups. Both list the five project authors. The Word/PDF exports
+were checked for table parsing and chart visibility; they describe saved
+evidence rather than new simulation runs. In the selected 30% gray-hole workload,
+persistence beat the LSTM in all five runs. Neither these component results nor
+the overall comparisons establish general AR-EAURP superiority.
 
 ## Tests and Colab
 
@@ -249,7 +265,8 @@ The former Python simulator, its trace simulator and the original Python
 simulation notebooks have been removed. They remain recoverable from Git
 history. The intermediate Python ns-3 launcher and analysis utilities in
 `legacy/ns3-python-tooling/` contain no simulation engine and are unsupported.
-Existing `output/` and `paper/` material is historical and must not be
-presented as native measurements.
+Existing `output/` measurements are historical Python results and must not be
+presented as native measurements. The current `paper/` manuscript and test
+report explicitly separate those historical results from the native ns-3 study.
 
 The independent Flutter messenger remains in `app/`; see its README.

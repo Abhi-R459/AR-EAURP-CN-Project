@@ -26,3 +26,16 @@ ns3/**/*.o
 # Regenerable native measurements; historical and final review results are preserved.
 /results/ns3-native-*/
 /results/ns3-live/
+
+# Local document references, duplicate exports, and layout/font experiments.
+/AR_EAURP_Research_Paper.pdf
+/AR_EAURP_Research_Paper_Revised.docx
+/AR_EAURP_Research_Paper_Submission.docx
+/AR_EAURP_Research_Paper_Submission_Preview.pdf
+/AR_EAURP_Test_Results_and_Findings.docx
+/AR_EAURP_Test_Results_and_Findings_Preview.pdf
+/AR_EAURP_Test_Results_and_Findings_Submission.docx
+/AR_EAURP_Test_Results_and_Findings_Submission_Preview.pdf
+/paper/assets/
+/paper/embed_paper_fonts.py
+/paper/install_paper_fonts.ps1
