@@ -35,8 +35,9 @@ Profile GetProfile(const std::string& name)
 {
     if (name == "smoke") return {name, 12, 2, 100, 1, 2, 1, 40};
     if (name == "quick") return {name, 120, 20, 120, 2, 60, 10, 900};
+    if (name == "review") return {name, 120, 20, 240, 5, 120, 30, 900};
     if (name == "full") return {name, 400, 30, 240, 5, 120, 30, 1500};
-    throw std::runtime_error("Unknown profile; use smoke, quick or full");
+    throw std::runtime_error("Unknown profile; use smoke, quick, review or full");
 }
 Parameters Defaults(const Profile& profile)
 {
@@ -46,6 +47,8 @@ Parameters Defaults(const Profile& profile)
                     {"protocol", "ar-eaurp"}, {"attack", "none"}, {"malicious", "0"}};
     if (profile.name == "smoke")
         args.insert({{"nodes", "16"}, {"flows", "6"}, {"area", "200"}, {"maxSpeed", "5"}});
+    if (profile.name == "review")
+        args.insert({{"nodes", "24"}, {"flows", "6"}, {"area", "420"}});
     return args;
 }
 ExperimentRow Row(const std::string& label, const std::string& policy, Parameters args, Parameters meta = {})

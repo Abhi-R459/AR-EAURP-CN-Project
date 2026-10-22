@@ -36,7 +36,8 @@ bash ns3/scripts/run.sh --profile=full
 ```
 
 `smoke` exercises 86 configurations with one seed, `quick` uses two seeds,
-and `full` uses five. Lifetime runs have longer horizons. Results default to
+`review` uses the five-run, 24-node review settings below, and `full` uses five
+runs with the larger full-profile workload. Lifetime runs have longer horizons. Results default to
 `results/ns3-native-PROFILE/`: raw checkpoints, CSVs, SVG figures, Gnuplot
 scripts, `report.md`, `report.html` and a manifest with build identity.
 
@@ -162,7 +163,63 @@ Control counters count generated attempts, including attempts after PHY
 shutdown. Diagnostic drops across layers are not additive application loss
 categories. A violated CMDP target does not prove infeasibility. Wall time
 includes commissioning and reflects host runtime. Smoke results validate
-execution only; the full research sweep has not been run during migration.
+execution only. The `review` results below are time-boxed and do not complete
+the planned five-run density sweep or establish protocol superiority.
+
+## Latest review results and evidence
+
+The native `review` profile uses ns-3.45, 24 nodes, six CBR flows, a 420 m
+square area, 120 s evaluation, 20 s warm-up, and five matched run numbers
+(master seed 20260909; runs 1–5). AR-EAURP receives a separate 240 s clean
+commissioning phase with 120 GAN and 30 LSTM epochs. This is a shorter review
+profile than the 400 s full-profile evaluation.
+
+The time-boxed review report contains results for all five protocol variants
+under mobility, density, blackhole, grayhole, trust-poisoning, energy, lifetime,
+component-ablation, CMDP-floor, and security-overhead scenarios. It records
+**179/181 conditions and 863/905 planned native runs**. E1, E3, E4, E4b, E5,
+E5b, and E6 are complete at five runs per condition. E2 density is partial:
+108/150 runs across 28/30 conditions. Densities from 60–120 nodes have five
+runs; the 150- and 200-node observations are single-run descriptive points,
+and EAURP and AR-EAURP at 200 nodes are missing. The report and ledgers do not
+impute missing runs.
+
+The matched E3 AR-EAURP versus EAURP PDR comparison has one of 18 attack/fraction
+cells whose unadjusted paired 95% interval excludes zero: trust poisoning at
+20% hostile nodes, +11.07 percentage points [1.35, 20.79]. The other 17
+intervals include zero. Since 180 pairwise protocol contrasts are exploratory
+and are not corrected for multiple comparisons, this does **not** establish
+overall AR-EAURP superiority. See the report for all protocols, attack
+fractions, settings, uncertainty, and limitations.
+
+An additional held-out CMDP commissioning study used matched run numbers
+21–50, separate from the review’s runs 1–5. The commissioning-trained
+AR-EAURP mean PDR was 80.97% versus 79.81% for EAURP (paired difference
++1.16 points, 95% CI −2.97 to +5.30; 16/30 paired wins). Mean delay was
+32 ms higher for AR-EAURP. This result is inconclusive and is not evidence of
+superiority. Earlier exploration and tuning runs are labeled separately in
+the study README so they are not mixed with the held-out comparison.
+
+The report folder is included in the repository as reproducibility evidence:
+
+- [Paper-style report (HTML)](results/ns3-native-paper-review/paper_results.html)
+- [Paper-style report (Markdown)](results/ns3-native-paper-review/paper_results.md)
+- [Study settings and completion manifest](results/ns3-native-paper-review/study_settings.json)
+- [Condition settings and aggregate metrics](results/ns3-native-paper-review/configuration_settings.csv)
+- [Per-run settings and checkpoint checksums](results/ns3-native-paper-review/run_settings.csv)
+- [All 180 matched E3 contrasts](results/ns3-native-paper-review/pairwise_e3_comparisons.csv)
+- [Aggregate CSV tables](results/ns3-native-paper-review/csv/)
+- [Figures (SVG and PNG)](results/ns3-native-paper-review/figures/)
+- [CMDP commissioning study, method and findings](results/optimization_study/README.md)
+- [Matched native JSON outputs and simulator logs](results/optimization_study/)
+
+All 863 ledger-referenced checkpoint files were checked against their SHA-256
+checksums; aggregate means/SDs and all 180 E3 pairwise deltas were independently
+reconciled against the per-run records. The report is assembled from verified
+checkpoints. The root `manifest.json` records the original C++ batch selection
+(`e3,e4,e5,e6`); the final E1/E2 data were also aggregated from their verified
+checkpoint sets. Rebuild the report from its folder using
+`python generate_paper_report.py`.
 
 ## Tests and Colab
 

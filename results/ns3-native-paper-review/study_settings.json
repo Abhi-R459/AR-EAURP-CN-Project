@@ -1,0 +1,192 @@
+{
+  "study": "Native ns-3 protocol and robustness comparison",
+  "engine": "ns-3.45 native C++",
+  "profile": "review",
+  "build_source_sha256": "45da34216e04a79d26b8e9db9e02270a2bcdb5c3edf8e63fea4d61eda8d9ed02",
+  "reproduction_command_from_project_root": "bash ns3/scripts/run.sh --profile=review --only=e1,e2,e3,e4,e5,e6 --out=results/ns3-native-paper-review --render=0",
+  "base_configuration": {
+    "nodes": 24,
+    "flows": 6,
+    "area_side_m": 420,
+    "measurement_duration_s": 120,
+    "warmup_s": 20,
+    "commissioning_duration_s_for_AR_s": 240,
+    "gan_epochs": 120,
+    "lstm_epochs": 30,
+    "seed": 20260909,
+    "run_numbers": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "replicates_per_condition": 5,
+    "min_speed_m_s": 1,
+    "default_max_speed_m_s": 20,
+    "waypoint_pause_max_s": 2,
+    "initial_energy_J_per_node": 350,
+    "cooldown_s": 10,
+    "default_application_rate_packets_per_second_per_flow": 1,
+    "default_packet_size_bytes": "uniform 512\u20131024",
+    "default_radio_tx_power_dbm": 16.0206,
+    "default_radio_sensitivity_dbm": -96,
+    "default_path_loss_exponent": 3.0,
+    "default_cmdp_pdr_floor": 0.9,
+    "default_harvest": true,
+    "default_gan_lstm_cmdp_ecc": true,
+    "default_realtime_pacing": false,
+    "default_cmdp_epsilon_start": 0.3,
+    "default_cmdp_epsilon_end": 0.05,
+    "radio": {
+      "transmit_power_dbm": 16.0206,
+      "receiver_sensitivity_dbm": -96,
+      "path_loss_exponent": 3.0
+    },
+    "traffic": {
+      "rate_packets_per_second_per_flow": 1.0,
+      "packet_size_bytes_min": 512,
+      "packet_size_bytes_max": 1024
+    },
+    "mobility": {
+      "minimum_speed_m_s": 1,
+      "maximum_speed_factor_default_m_s": 20,
+      "waypoint_pause_max_s": 2
+    },
+    "harvesting": {
+      "panel_fraction": 0.7,
+      "compressed_day_length_s": 600
+    }
+  },
+  "protocols": [
+    {
+      "label": "AODV",
+      "id": "aodv"
+    },
+    {
+      "label": "EAURP",
+      "id": "eaurp"
+    },
+    {
+      "label": "DRL-EAURP (paper)",
+      "id": "drl-paper"
+    },
+    {
+      "label": "DRL-EAURP (senior)",
+      "id": "drl-senior"
+    },
+    {
+      "label": "AR-EAURP",
+      "id": "ar-eaurp"
+    }
+  ],
+  "variations": {
+    "E1_mobility_max_speed_m_s": [
+      1,
+      5,
+      10,
+      15,
+      20
+    ],
+    "E2_node_count": [
+      60,
+      80,
+      100,
+      120,
+      150,
+      200
+    ],
+    "E3_attacks": [
+      "blackhole",
+      "grayhole",
+      "trust_poisoning"
+    ],
+    "E3_malicious_fraction_percent": [
+      0,
+      10,
+      20,
+      30,
+      40,
+      50
+    ],
+    "E4_energy_modes": [
+      "battery (harvest disabled)",
+      "solar/kinetic harvesting"
+    ],
+    "E4b_lifetime_horizon_s": 900,
+    "E5_AR_EAURP_ablations": [
+      "full",
+      "without GAN",
+      "without LSTM",
+      "without CMDP",
+      "bare",
+      "without energy excuse"
+    ],
+    "E5b_CMDP_delivery_floors": [
+      0.7,
+      0.8,
+      0.9,
+      0.95
+    ],
+    "E6_security_overhead": [
+      "all protocols with grayhole at 30%",
+      "AR-EAURP without ECC"
+    ]
+  },
+  "statistics": {
+    "summary": "arithmetic mean and sample standard deviation across available ns-3 run numbers; five planned",
+    "interval": "two-sided 95% Student-t confidence interval using observed sample size; omitted for n<2; intervals for PDR, TPR, FPR, and AUC are bounded to [0,1]",
+    "paired_comparisons": "AR-EAURP vs EAURP paired per-run PDR differences for E3 conditions (five matched runs)"
+  },
+  "planned_condition_count": 181,
+  "planned_native_run_count": 905,
+  "rng_configuration": {
+    "master_seed": 20260909,
+    "run_numbers": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "method": "Fixed ns-3 master seed with distinct RngRun numbers; run numbers are matched across protocol comparisons.",
+    "event_level_common_random_numbers": false
+  },
+  "settings_files": {
+    "configuration_settings.csv": "One row per condition with canonical run-1 CLI settings, observed run numbers, means, sample SDs, and 95% bounded Student-t intervals for selected rate metrics.",
+    "run_settings.csv": "One row per native replication, with exact CLI settings, measured cfg_* values, selected metrics, and checkpoint SHA-256."
+  },
+  "execution_provenance": {
+    "final_report_scope": "Composite E1-E6 report built from verified ns-3 per-run checkpoints.",
+    "original_root_manifest_selection": "e3,e4,e5,e6",
+    "note": "The root manifest selection records the original native C++ batch selection; the final report also aggregates E1 and partial E2 checkpoints. The exact run coverage and source identity are recorded in the ledgers."
+  },
+  "completion": {
+    "status": "time-boxed partial matrix",
+    "completed_conditions": 179,
+    "planned_conditions": 181,
+    "completed_native_runs": 863,
+    "planned_native_runs": 905,
+    "condition_counts_by_experiment": {
+      "e1_speed": 25,
+      "e2_density": 28,
+      "e3_attack": 90,
+      "e4_energy": 10,
+      "e4b_lifetime": 10,
+      "e5_ablation": 6,
+      "e5b_cmdp_floor": 4,
+      "e6_overhead": 6
+    },
+    "run_counts_by_experiment": {
+      "e1_speed": 125,
+      "e2_density": 108,
+      "e3_attack": 450,
+      "e4_energy": 50,
+      "e4b_lifetime": 50,
+      "e5_ablation": 30,
+      "e5b_cmdp_floor": 20,
+      "e6_overhead": 30
+    },
+    "incomplete_runs_are_imputed": false
+  }
+}

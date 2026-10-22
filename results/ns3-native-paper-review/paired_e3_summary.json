@@ -1,0 +1,182 @@
+[
+  {
+    "attack": "blackhole",
+    "malicious_pct": 0,
+    "paired_pdr_delta_pp": 2.166666666666668,
+    "paired_delta_sd_pp": 5.516389721145123,
+    "paired_ci95_low_pp": -4.681737773622895,
+    "paired_ci95_high_pp": 9.015071106956231,
+    "ar_wins": 4,
+    "n": 5
+  },
+  {
+    "attack": "blackhole",
+    "malicious_pct": 10,
+    "paired_pdr_delta_pp": -7.666666666666666,
+    "paired_delta_sd_pp": 11.34190852056605,
+    "paired_ci95_low_pp": -21.747248460202194,
+    "paired_ci95_high_pp": 6.413915126868863,
+    "ar_wins": 2,
+    "n": 5
+  },
+  {
+    "attack": "blackhole",
+    "malicious_pct": 20,
+    "paired_pdr_delta_pp": -0.33333333333333437,
+    "paired_delta_sd_pp": 7.267698703471715,
+    "paired_ci95_low_pp": -9.355926476228683,
+    "paired_ci95_high_pp": 8.689259809562015,
+    "ar_wins": 2,
+    "n": 5
+  },
+  {
+    "attack": "blackhole",
+    "malicious_pct": 30,
+    "paired_pdr_delta_pp": -2.333333333333333,
+    "paired_delta_sd_pp": 7.246646734103221,
+    "paired_ci95_low_pp": -11.329791194316421,
+    "paired_ci95_high_pp": 6.663124527649756,
+    "ar_wins": 2,
+    "n": 5
+  },
+  {
+    "attack": "blackhole",
+    "malicious_pct": 40,
+    "paired_pdr_delta_pp": 3.4333333333333345,
+    "paired_delta_sd_pp": 10.146564826470966,
+    "paired_ci95_low_pp": -9.163271171408763,
+    "paired_ci95_high_pp": 16.02993783807543,
+    "ar_wins": 2,
+    "n": 5
+  },
+  {
+    "attack": "blackhole",
+    "malicious_pct": 50,
+    "paired_pdr_delta_pp": 1.2999999999999998,
+    "paired_delta_sd_pp": 6.164864601559029,
+    "paired_ci95_low_pp": -6.353463269512553,
+    "paired_ci95_high_pp": 8.953463269512554,
+    "ar_wins": 2,
+    "n": 5
+  },
+  {
+    "attack": "grayhole",
+    "malicious_pct": 0,
+    "paired_pdr_delta_pp": 2.166666666666668,
+    "paired_delta_sd_pp": 5.516389721145123,
+    "paired_ci95_low_pp": -4.681737773622895,
+    "paired_ci95_high_pp": 9.015071106956231,
+    "ar_wins": 4,
+    "n": 5
+  },
+  {
+    "attack": "grayhole",
+    "malicious_pct": 10,
+    "paired_pdr_delta_pp": -3.1000000000000005,
+    "paired_delta_sd_pp": 4.465298297861954,
+    "paired_ci95_low_pp": -8.643511288384323,
+    "paired_ci95_high_pp": 2.4435112883843217,
+    "ar_wins": 1,
+    "n": 5
+  },
+  {
+    "attack": "grayhole",
+    "malicious_pct": 20,
+    "paired_pdr_delta_pp": 6.666666666666667,
+    "paired_delta_sd_pp": 8.5146931829632,
+    "paired_ci95_low_pp": -3.904026404272435,
+    "paired_ci95_high_pp": 17.237359737605768,
+    "ar_wins": 4,
+    "n": 5
+  },
+  {
+    "attack": "grayhole",
+    "malicious_pct": 30,
+    "paired_pdr_delta_pp": 1.2333333333333352,
+    "paired_delta_sd_pp": 8.29373927195153,
+    "paired_ci95_low_pp": -9.06305320348411,
+    "paired_ci95_high_pp": 11.529719870150778,
+    "ar_wins": 2,
+    "n": 5
+  },
+  {
+    "attack": "grayhole",
+    "malicious_pct": 40,
+    "paired_pdr_delta_pp": -2.1,
+    "paired_delta_sd_pp": 8.580177413343181,
+    "paired_ci95_low_pp": -12.751989447151281,
+    "paired_ci95_high_pp": 8.551989447151282,
+    "ar_wins": 2,
+    "n": 5
+  },
+  {
+    "attack": "grayhole",
+    "malicious_pct": 50,
+    "paired_pdr_delta_pp": -3.4666666666666663,
+    "paired_delta_sd_pp": 5.545769158156112,
+    "paired_ci95_low_pp": -10.351544647994858,
+    "paired_ci95_high_pp": 3.418211314661526,
+    "ar_wins": 1,
+    "n": 5
+  },
+  {
+    "attack": "trust_poisoning",
+    "malicious_pct": 0,
+    "paired_pdr_delta_pp": 2.166666666666668,
+    "paired_delta_sd_pp": 5.516389721145123,
+    "paired_ci95_low_pp": -4.681737773622895,
+    "paired_ci95_high_pp": 9.015071106956231,
+    "ar_wins": 4,
+    "n": 5
+  },
+  {
+    "attack": "trust_poisoning",
+    "malicious_pct": 10,
+    "paired_pdr_delta_pp": -3.0666666666666638,
+    "paired_delta_sd_pp": 10.597169433391162,
+    "paired_ci95_low_pp": -16.22268099320188,
+    "paired_ci95_high_pp": 10.089347659868555,
+    "ar_wins": 3,
+    "n": 5
+  },
+  {
+    "attack": "trust_poisoning",
+    "malicious_pct": 20,
+    "paired_pdr_delta_pp": 11.066666666666665,
+    "paired_delta_sd_pp": 7.828544635569952,
+    "paired_ci95_low_pp": 1.3478029617083802,
+    "paired_ci95_high_pp": 20.78553037162495,
+    "ar_wins": 5,
+    "n": 5
+  },
+  {
+    "attack": "trust_poisoning",
+    "malicious_pct": 30,
+    "paired_pdr_delta_pp": -2.3000000000000007,
+    "paired_delta_sd_pp": 9.922897202374358,
+    "paired_ci95_low_pp": -14.61892899096526,
+    "paired_ci95_high_pp": 10.018928990965259,
+    "ar_wins": 2,
+    "n": 5
+  },
+  {
+    "attack": "trust_poisoning",
+    "malicious_pct": 40,
+    "paired_pdr_delta_pp": 9.866666666666664,
+    "paired_delta_sd_pp": 9.051856776988418,
+    "paired_ci95_low_pp": -1.3708961738942538,
+    "paired_ci95_high_pp": 21.10422950722758,
+    "ar_wins": 4,
+    "n": 5
+  },
+  {
+    "attack": "trust_poisoning",
+    "malicious_pct": 50,
+    "paired_pdr_delta_pp": -1.466666666666668,
+    "paired_delta_sd_pp": 16.448741930953595,
+    "paired_ci95_low_pp": -21.88720309927674,
+    "paired_ci95_high_pp": 18.953869765943402,
+    "ar_wins": 2,
+    "n": 5
+  }
+]

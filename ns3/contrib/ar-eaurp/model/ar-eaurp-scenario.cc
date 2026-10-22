@@ -252,6 +252,8 @@ struct ScenarioConfig
     bool energyExcuse{true};
     bool ecc{true};
     double pdrFloor{0.90};
+    double cmdpEpsStart{0.30};
+    double cmdpEpsEnd{0.05};
     uint32_t ganEpochs{120};
     uint32_t lstmEpochs{30};
 
@@ -874,6 +876,8 @@ ns3::arEaurp::RunScenarioCommand(int argc, char* argv[], Measurements* output)
     cmd.AddValue("energyExcuse", "excuse low-energy relays in consensus", cfg.energyExcuse);
     cmd.AddValue("ecc", "protect application messages using X25519/AES-GCM", cfg.ecc);
     cmd.AddValue("pdrFloor", "CMDP delivery constraint", cfg.pdrFloor);
+    cmd.AddValue("cmdpEpsStart", "CMDP epsilon at the start of evaluation", cfg.cmdpEpsStart);
+    cmd.AddValue("cmdpEpsEnd", "minimum CMDP epsilon during evaluation", cfg.cmdpEpsEnd);
     cmd.AddValue("ganEpochs", "GAN training epochs", cfg.ganEpochs);
     cmd.AddValue("lstmEpochs", "LSTM training epochs", cfg.lstmEpochs);
     cmd.AddValue("json", "write one machine-readable result", MakeBoundCallback(&SetString, &jsonPath));
@@ -921,6 +925,8 @@ ns3::arEaurp::RunScenarioCommand(int argc, char* argv[], Measurements* output)
         !std::isfinite(cfg.panelFraction) || cfg.panelFraction < 0 || cfg.panelFraction > 1 ||
         !std::isfinite(cfg.dayLength) || cfg.dayLength <= 0 ||
         !std::isfinite(cfg.pdrFloor) || cfg.pdrFloor < 0 || cfg.pdrFloor > 1 ||
+        !std::isfinite(cfg.cmdpEpsStart) || cfg.cmdpEpsStart < 0 || cfg.cmdpEpsStart > 1 ||
+        !std::isfinite(cfg.cmdpEpsEnd) || cfg.cmdpEpsEnd < 0 || cfg.cmdpEpsEnd > cfg.cmdpEpsStart ||
         !std::isfinite(cfg.commission) || cfg.commission <= 10 ||
         !std::isfinite(cfg.txPower) || !std::isfinite(cfg.sensitivity) ||
         !std::isfinite(cfg.pathLossExponent) || cfg.pathLossExponent <= 0 ||
@@ -955,6 +961,8 @@ ns3::arEaurp::RunScenarioCommand(int argc, char* argv[], Measurements* output)
         // The detector and the forecaster are trained here and then frozen, so
         // neither has seen the attack it is later scored on.
         oracle.CreateModels(cfg.seed * 7919 + 13);
+        oracle.Agent()->SetConstraint(cfg.pdrFloor, 5.0, 0.05, 20.0);
+        oracle.Agent()->SetExploration(cfg.cmdpEpsStart, cfg.cmdpEpsEnd, 800.0);
         std::cout << "[commissioning] clean run, " << cfg.commission << " s ..." << std::endl;
         RunOnce(cfg, true, 500);
 
@@ -999,9 +1007,10 @@ ns3::arEaurp::RunScenarioCommand(int argc, char* argv[], Measurements* output)
     else if (cfg.protocol == "ar-eaurp")
     {
         oracle.CreateModels(cfg.seed * 7919 + 13);
+        oracle.Agent()->SetConstraint(cfg.pdrFloor, 5.0, 0.05, 20.0);
+        oracle.Agent()->SetExploration(cfg.cmdpEpsStart, cfg.cmdpEpsEnd, 800.0);
     }
 
-    if (oracle.Agent()) oracle.Agent()->SetConstraint(cfg.pdrFloor, 5.0, 0.05, 20.0);
     std::cout << "[evaluation] " << cfg.protocol << " / " << cfg.attack << " @ "
               << (100.0 * cfg.malicious) << "% , " << cfg.nodes << " nodes, " << cfg.duration
               << " s" << std::endl;

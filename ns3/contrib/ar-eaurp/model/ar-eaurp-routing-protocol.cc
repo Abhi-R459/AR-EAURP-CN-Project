@@ -1191,7 +1191,8 @@ RoutingProtocol::SendRequest(Ipv4Address dst)
                        searching.GetFlag() == IN_SEARCH && m_pending.count(dst);
     if (retry) policy = m_policyInUse[dst];
     else if (m_variant == VARIANT_AR_EAURP && m_useCmdp && Oracle::Get().Agent() &&
-        Oracle::Get().Phase() == PHASE_EVALUATION)
+        (Oracle::Get().Phase() == PHASE_EVALUATION ||
+         Oracle::Get().Phase() == PHASE_COMMISSIONING))
     {
         const Vec state = BuildState();
         const uint32_t action = Oracle::Get().Agent()->Act(state);
@@ -2858,7 +2859,8 @@ RoutingProtocol::NotifyDelivery(Ipv4Address dst, bool delivered, uint32_t hops, 
         return;
     }
     CmdpAgent* agent = Oracle::Get().Agent();
-    if (!agent || Oracle::Get().Phase() != PHASE_EVALUATION)
+    if (!agent || (Oracle::Get().Phase() != PHASE_EVALUATION &&
+                   Oracle::Get().Phase() != PHASE_COMMISSIONING))
     {
         return;
     }
