@@ -19,3 +19,9 @@ project_docs/Lekha.pdf
 # session. The canonical locations are colab/ and report/.
 /REVIEW2_AR_EAURP.ipynb
 /REVIEW2_REPORT.md
+
+# ns-3 build artefacts (the ns-3 tree itself lives outside the repo)
+ns3/**/*.o
+
+# Regenerable native measurements and figures; historical output is untouched.
+/results/

@@ -1,0 +1,5 @@
+# Python orchestrates compiled ns-3 and renders results; it does not simulate.
+numpy>=1.24
+matplotlib>=3.7
+pytest>=7.0
+nbformat>=5.0
