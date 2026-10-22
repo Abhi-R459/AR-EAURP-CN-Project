@@ -46,7 +46,7 @@ cd "$ns3_home"
 # csma and point-to-point are dependencies of upstream ns-3 test suites.
 cmake -S . -B cmake-cache -DCMAKE_BUILD_TYPE=release -DNS3_NATIVE_OPTIMIZATIONS=ON \
   -DNS3_ASSERT=OFF -DNS3_LOG=OFF -DNS3_TESTS=ON -DNS3_EXAMPLES=OFF \
-  -DNS3_ENABLED_MODULES=ar-eaurp,aodv,flow-monitor,csma,point-to-point
+  -DNS3_ENABLED_MODULES=ar-eaurp,aodv,flow-monitor,netanim,csma,point-to-point
 build_jobs="${NS3_JOBS:-4}"
 cmake --build cmake-cache --parallel "$build_jobs" --target scratch_ar-eaurp-sim scratch_ar-eaurp-experiments scratch_ar-eaurp-range test-runner
 "$ns3_home/build/scratch/ns3.45-ar-eaurp-experiments-optimized" --stamp=1 --project="$project_root" --ns3-home="$ns3_home"

@@ -56,6 +56,11 @@ class EnergyForecaster
         return m_trained;
     }
 
+    bool UsesLstm() const
+    {
+        return m_trained && m_lstmMae < m_persistenceMae;
+    }
+
     uint32_t InputLen() const
     {
         return m_inputLen;

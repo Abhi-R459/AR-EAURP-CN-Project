@@ -120,6 +120,7 @@ class Oracle
 
     void ReportContested(Ipv4Address observer, Ipv4Address subject);
     void ReportRevoked(Ipv4Address observer, Ipv4Address subject);
+    uint32_t HonestWitnesses(Ipv4Address subject, bool revoked) const;
 
     /// Fraction of malicious nodes flagged by at least minWitnesses honest nodes.
     void DetectionRates(uint32_t minWitnesses,
@@ -162,6 +163,10 @@ class Oracle
     uint64_t AppRx() const
     {
         return m_appRx;
+    }
+    double MeanDelayMs() const
+    {
+        return m_appRx ? 1000.0 * m_delaySum / static_cast<double>(m_appRx) : 0.0;
     }
 
   private:

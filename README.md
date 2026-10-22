@@ -4,8 +4,10 @@ The simulation and active workflow are **compiled ns-3.45 C++**: experiment sele
 network simulation, GAN/LSTM/tabular learning/CMDP, repeated seeds,
 checkpointing, statistics, CSVs, reports and plot-script generation.
 Plots use ns-3's `Gnuplot` helper and the gnuplot renderer. Shell scripts build
-and launch the executables. There is no project Python runtime or Python
-orchestrator. Upstream ns-3 keeps its standard build dependencies.
+and launch the executables. Evaluation needs no project Python runtime or Python
+orchestrator. The optional local trace viewer uses Python's standard library to
+serve output from the compiled simulator. Upstream ns-3 keeps its standard
+build dependencies.
 
 All network simulation must run in ns-3. Python may be used for analysis,
 visualization or other utilities, but must not implement a simulation engine,
@@ -68,6 +70,51 @@ Individual scenarios can also run through the compiled binary:
 "$NS3_HOME/build/scratch/ns3.45-ar-eaurp-sim-optimized" \
   --protocol=ar-eaurp --attack=grayhole --malicious=0.3 --json=run.json
 ```
+
+### NetAnim and live trace viewer
+
+The scenario can write a genuine ns-3 NetAnim XML trace for the **evaluation**
+phase. If AR-EAURP trains models first, the clean commissioning phase is kept
+out of that trace. Packet records represent wireless transmissions and actual
+receptions; a received wireless frame is not an application delivery.
+
+```bash
+"$NS3_HOME/build/scratch/ns3.45-ar-eaurp-sim-optimized" \
+  --protocol=ar-eaurp --attack=grayhole --malicious=0.25 \
+  --nodes=24 --flows=6 --area=420 --time=40 --warmup=5 \
+  --netanim=trace.xml --netanimPoll=0.25
+```
+
+Open `trace.xml` in the [official NetAnim application](https://www.nsnam.org/docs/models/html/animation.html),
+or open `ns3_netanim_viewer.html` and select the XML. The browser viewer also
+accepts split trace files together (`trace.xml`, `trace.xml-1`, and so on).
+`--netanimStart`, `--netanimStop` and `--netanimMaxPackets` control the trace
+window and file size. Large research runs can produce very large XML files, so
+choose a short window for inspection.
+
+For a live run, start the local viewer server from the project root:
+
+```bash
+python3 ns3/netanim/live_server.py --ns3-home "$NS3_HOME"
+```
+
+On Windows, run this command in WSL alongside the Linux ns-3 build.
+
+Open the address it prints, choose the scenario and press **Start ns-3 run**.
+The server launches the compiled binary and relays its native NetAnim elements
+as they are written. The **Pace evaluation to wall time** option uses ns-3's
+best-effort real-time scheduler; if a run needs more CPU time, it can fall
+behind wall time. The page reads final application PDR and delay from the
+scenario's JSON result. XML replay alone does not contain those metrics.
+Live traces and results are saved under `results/ns3-live/`.
+Each live run also saves `launch.json` with the exact simulator command and
+requested viewer settings. Completed runs appear in the viewer's measured
+protocol comparison table; saved native `result.json` files can be loaded there
+for a fast replay of results. A checked, short EAURP/AR-EAURP demonstration and
+its limits are documented in
+`results/final_review_ns3_results/FINAL_NS3_EVALUATION_REPORT.md`.
+
+### Protocol variants
 
 | Protocol | Behaviour |
 |---|---|

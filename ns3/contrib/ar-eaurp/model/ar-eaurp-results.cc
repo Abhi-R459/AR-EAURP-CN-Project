@@ -1,5 +1,6 @@
 #include "ar-eaurp-results.h"
 #include "ns3/gnuplot.h"
+#include <iostream>
 #include <openssl/evp.h>
 #include <algorithm>
 #include <cmath>
@@ -329,14 +330,15 @@ void WriteReports(const fs::path& root, const ExperimentResults& results,
                 plot(name, rows, metric, title, xkey);
         if (name == "e3_attack")
         {
-            table(rows, {{"detect_tpr", "Contested TPR"}, {"detect_fpr", "Contested FPR"}, {"revoke_tpr", "Revocation TPR"}, {"revoke_fpr", "Revocation FPR"}, {"detector_windows", "Detector windows"}});
+            table(rows, {{"detect_tpr", "GAN window TPR"}, {"detect_fpr", "GAN window FPR"}, {"detector_auc", "GAN score AUC"}, {"contested_tpr", "Two-witness contested TPR"}, {"contested_fpr", "Two-witness contested FPR"}, {"revoke_tpr", "Revocation TPR"}, {"revoke_fpr", "Revocation FPR"}, {"detector_windows", "Detector windows"}});
             for (const auto* attack : {"blackhole", "grayhole", "trust_poisoning"})
             {
                 std::vector<ExperimentRow> subset;
                 for (const auto& row : rows) if (row.attack == attack) subset.push_back(row);
                 plot(std::string("e3_") + attack, subset, "pdr", "PDR", "malicious_pct");
-                plot(std::string("e3_") + attack, subset, "detect_tpr", "Flag TPR: C contested, others revoked", "malicious_pct");
-                plot(std::string("e3_") + attack, subset, "detect_fpr", "Flag FPR: C contested, others revoked", "malicious_pct");
+                plot(std::string("e3_") + attack, subset, "detect_tpr", "GAN window TPR", "malicious_pct");
+                plot(std::string("e3_") + attack, subset, "detect_fpr", "GAN window FPR", "malicious_pct");
+                plot(std::string("e3_") + attack + "_consensus", subset, "contested_tpr", "Two-witness contested TPR", "malicious_pct");
             }
         }
         if (name == "e4_energy")

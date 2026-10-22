@@ -25,3 +25,4 @@ ns3/**/*.o
 
 # Regenerable native measurements; historical and final review results are preserved.
 /results/ns3-native-*/
+/results/ns3-live/

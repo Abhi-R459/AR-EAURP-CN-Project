@@ -171,6 +171,12 @@ EnergyForecaster::Predict(const std::deque<std::pair<double, double>>& recent) c
     {
         return recent.empty() ? 0.0 : recent.back().first;
     }
+    // A learned model only controls routing when it beats persistence on the
+    // held-out commissioning windows. Until then, keep the validated baseline.
+    if (!UsesLstm())
+    {
+        return recent.back().first;
+    }
     std::vector<Vec> seq;
     seq.reserve(m_inputLen);
     auto it = recent.end() - m_inputLen;

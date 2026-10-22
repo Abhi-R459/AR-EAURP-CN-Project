@@ -1,77 +1,62 @@
-# Final Review ns-3 Evaluation Report — AR-EAURP Protocol
+# Final review: native ns-3 results and implementation correction
 
-**Simulation Engine:** ns-3.45 native C++20  
-**Results Directory:** [`results/final_review_ns3_results/`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results)  
-**HTML Visual Dashboard:** [FINAL_NS3_EVALUATION_REPORT.html](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/FINAL_NS3_EVALUATION_REPORT.html)  
-**Interactive NetAnim Visualizer:** [ns3_netanim_viewer.html](file:///c:/dev/AR-EAURP-CN-Project/ns3_netanim_viewer.html)
+## Result to present
 
----
+We reran EAURP and AR-EAURP with matched native ns-3.45 settings across five RNG runs. The result does **not** establish that AR-EAURP improves delivery in this scenario. Its mean PDR was lower by 1.9 percentage points, and the paired 95% t interval spans from -8.46 to +4.66 percentage points. Treat the delivery comparison as inconclusive; do not claim AR-EAURP beat EAURP in ns-3.
 
-## Executive Summary for Final Review Presentation
+| Metric (mean ± sample SD across five runs) | EAURP | AR-EAURP |
+|---|---:|---:|
+| Application PDR | 83.73% ± 4.23 | 81.83% ± 4.60 |
+| Mean application delay | 257 ± 86 ms | 292 ± 108 ms |
+| GAN window detection TPR | n/a | 6.79% ± 3.32 |
+| GAN window false-positive rate | n/a | 5.83% ± 6.14 |
+| GAN score ROC AUC | n/a | 0.55 ± 0.08 |
+| Two-honest-witness contested TPR | n/a | 0% in all five runs |
+| LSTM holdout MAE / persistence MAE | n/a | 0.60 W / 0.06 W (mean) |
+| LSTM selected for routing | n/a | no, in all five runs |
 
-1. **Physical Reality vs Review 2:** Unlike the abstract probabilistic coin-flip packet deliveries used in Review 2's Python notebooks, this final evaluation models real **802.11b DSSS radios**, LogDistance path loss, Nakagami fading, MAC contention, backoff, battery depletion, and solar harvesting in compiled C++.
-2. **The Decisive Grayhole Defense (RQ2):** Under selective-forwarding grayhole attacks (dropping packets $\ge 700\text{ bytes}$), every prior protocol (**AODV, EAURP, DRL-EAURP**) achieves **$0.0\%$ detection recall ($\text{TPR} \approx 0$)**. **AR-EAURP's multi-feature GAN anomaly detector achieves $>70\%$ detection recall**, cutting attacker trust and routing around the attack.
-3. **Renewable Energy Harvesting (RQ3):** Photovoltaic solar harvesting combined with LSTM prediction extends network lifetime and delays node depletion.
+The paired runs sent 600 application packets each. The difference is noisy at five seeds and does not support a ranking. The security detector has weak discrimination in this native scenario: its mean AUC is only modestly above 0.5, and only a small fraction of malicious behavior windows cross its calibrated threshold. No node reached the two-honest-witness contested consensus. The LSTM lost to persistence on every commissioning evaluation, so the corrected implementation uses persistence for routing in these runs.
 
----
+## What was corrected
 
-## Review 2 (Colab) vs Review 3 (ns-3): The Realism & Fidelity Leap
+The native detector previously used the GAN discriminator's real-versus-generated output directly as a maliciousness score. That score answers whether a sample resembles the GAN's generated samples; it does not directly score whether a relay's behavior is malicious. The native implementation now scores each observation by distance to a bank of GAN-generated clean feature vectors and calibrates its threshold on clean commissioning data. This matches the detector method described in the project paper.
 
-| Dimension / Layer | Google Colab (Review 2 Python) | ns-3.45 C++ Engine (Final Review) | Physical Realism Impact |
-|---|---|---|---|
-| **Time Domain** | Discrete synchronous "rounds" (integer steps) | **Continuous picosecond timeline** (`Simulator::Schedule`) | Models true packet serialization delay, channel busy time, and asynchronous node clocks. |
-| **Radio PHY Layer** | Ideal step-function (100% link if &le; 150m) | **802.11b DSSS (11 Mbps) + Nakagami Fading** | Includes LogDistance path loss, antenna gain, thermal noise floor (-99 dBm), and edge packet bit-errors. |
-| **MAC Layer & Contention** | None (broadcasts flood instantly without cost) | **IEEE 802.11 DCF CSMA/CA** | Real exponential binary backoff, slot times, and physical frame collisions during route discovery storms. |
-| **Queue & Buffers** | Infinite Python lists (zero queue drops) | **Finite DropTailQueue (100 packets)** | Packets genuinely drop when link breaks stall forwarding and queues overflow. |
-| **Packet Serialization** | Abstract Python dict / tuple objects | **Byte-level binary packets & headers** | Packet byte size directly dictates wireless airtime (750 &mu;s for 1024B vs 46 &mu;s for 64B). |
-| **High-Speed PDR (20 m/s)** | 82.7% (artificially flat & optimistic) | **66.7% (realistic physical degradation)** | Captures route breaks, ARP retransmissions, and MAC-layer route discovery contention. |
-| **Grayhole Attack TPR** | 59.7% (abstract drop count) | **56.8% - 80.4% (8D GAN flow manifold)** | Detects true inter-arrival jitter variance, payload size ratios, and MAC ACK feedback disparities. |
+The result accounting now reports per-window GAN TPR/FPR separately from two-witness contested consensus and revocation TPR/FPR. Earlier `detect_tpr` and `detect_fpr` fields represented consensus rates, which could mislead readers into thinking they were raw detector metrics. The native JSON now includes separate `contested_tpr` and `contested_fpr` fields.
 
-Backing dataset: [`colab_vs_ns3_comparison.csv`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/csv/colab_vs_ns3_comparison.csv)  
-Comparative figure: [`colab_vs_ns3_fidelity_comparison.png`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/figures/colab_vs_ns3_fidelity_comparison.png)
+The LSTM is selected for routing only when its commissioning holdout MAE beats persistence. Otherwise, routing uses the most recent harvest sample as the persistence forecast. In this evaluation the fallback was selected in all five runs.
 
----
+These corrections improve method fidelity and reporting accuracy. They have **not** made the current ns-3 performance claim positive: delivery and detection remain open research issues. Colab results and these native ns-3 results must be described as different experiments unless their simulation engine, workload, topology, attack, horizon, training and metrics are demonstrably the same.
 
-## Complete Suite of Generated Figures (`results/final_review_ns3_results/figures/`)
+## Reproduction
 
-The dedicated ns-3 evaluation suite includes all 9 canonical research figures plus high-DPI highlights:
+Settings: 24 nodes, six UDP flows, 420 m square, 25% grayhole nodes, 120 seconds measured time, 20 seconds warmup, seed 1, run numbers 1–5. AR-EAURP uses 240 seconds clean commissioning, 120 GAN epochs and 30 LSTM epochs. Each pair has matching evaluation run numbers and network settings.
 
-| Figure Filename | Experiment / Focus | Key Finding |
-|---|---|---|
-| [`colab_vs_ns3_fidelity_comparison.png`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/figures/colab_vs_ns3_fidelity_comparison.png) | **Colab vs. ns-3 Fidelity Leap** | Demonstrates the realism leap in MAC contention, RF fading, and physical delays. |
-| [`c_gan_training.png`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/figures/c_gan_training.png) | Offline Pre-training Diagnostics | Generator & Discriminator loss curves (AUC = 0.9673). |
-| [`c_lstm_accuracy.png`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/figures/c_lstm_accuracy.png) | Harvest Forecasting Accuracy | LSTM achieves 37.1% lower MAE than Seasonal Naive baseline. |
-| [`e1_speed.png`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/figures/e1_speed.png) | E1 Speed Sweep (6 Panels) | PDR, Routable PDR, Delay, Loss, Throughput across 1-20 m/s. |
-| [`e2_density.png`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/figures/e2_density.png) | E2 Density Sweep (3 Panels) | PDR, unroutable partitions, and delay across 12-200 nodes. |
-| [`e3_attack.png`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/figures/e3_attack.png) | E3 Attack Suite (3x3 Grid) | Blackhole, Grayhole, Trust Poisoning across 0-50% malicious nodes. |
-| [`e4b_lifetime.png`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/figures/e4b_lifetime.png) | E4b Network Lifetime | First node death and 80% depletion (Battery vs Solar). |
-| [`e5_ablation.png`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/figures/e5_ablation.png) | E5 Component Ablation | Removing GAN causes grayhole detection recall to collapse to 0%. |
-| [`e5b_cmdp_floor.png`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/figures/e5b_cmdp_floor.png) | E5b CMDP Feasibility Floor | Physical delivery ceiling (~65%) and dual multiplier $\lambda$ ascent. |
-| [`track1_a_vs_b.png`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/figures/track1_a_vs_b.png) | Track 1 Reproduction | Explains senior code's +241.5 rounds from constant drain band. |
-| [`e6_overhead.png`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/figures/e6_overhead.png) | E6 Cryptographic Overhead | Control packets, simulation wall-clock time, and wire bytes. |
-| [`e3_grayhole_detection_recall.png`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/figures/e3_grayhole_detection_recall.png) | E3 Highlight Plot | High-DPI comparison showing TPR = 0% vs TPR > 70%. |
-| [`e3_grayhole_pdr_comparison.png`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/figures/e3_grayhole_pdr_comparison.png) | E3 Highlight Plot | PDR degradation under selective grayhole attack. |
-| [`e1_speed_vs_pdr.png`](file:///c:/dev/AR-EAURP-CN-Project/results/final_review_ns3_results/figures/e1_speed_vs_pdr.png) | E1 Highlight Plot | Direct speed vs PDR degradation curve. |
+From the repository root in WSL, after the native ns-3 build is available:
 
----
+```bash
+export NS3_HOME="$HOME/.cache/ar-eaurp/ns-3.45"
+SIM="$NS3_HOME/build/scratch/ns3.45-ar-eaurp-sim-optimized"
+OUT="results/final_review_ns3_results/native_long_runs"
+mkdir -p "$OUT"
+for run in 1 2 3 4 5; do
+  common=(--attack=grayhole --malicious=0.25 --nodes=24 --flows=6 \
+    --area=420 --time=120 --warmup=20 --seed=1 --run="$run")
+  "$SIM" "${common[@]}" --protocol=eaurp --train=0 \
+    --json="$OUT/eaurp-run${run}.json"
+  "$SIM" "${common[@]}" --protocol=ar-eaurp --train=1 \
+    --commission=240 --ganEpochs=120 --lstmEpochs=30 \
+    --json="$OUT/ar-eaurp-run${run}.json"
+done
+```
 
-## Available Separate CSV Files in `results/final_review_ns3_results/csv/`
+The saved paired source files are in [`native_long_runs/`](native_long_runs/); the compact per-seed comparison is [`NATIVE_FIVE_SEED_COMPARISON.csv`](NATIVE_FIVE_SEED_COMPARISON.csv). PDR is `app_rx / app_tx` from each simulator JSON. The mean paired-difference interval uses a two-sided Student t interval with four degrees of freedom. The short 8-second demo files in `native_demo/` remain useful for animation rehearsal, but are not evidence of comparative performance.
 
-1. **Experimental Sweeps:**
-   - `e1_speed_sweep.csv`
-   - `e2_density_sweep.csv`
-   - `e3_attack_resilience_sweep.csv`
-   - `e4_energy_harvesting_sweep.csv`
-   - `e4c_lstm_accuracy.csv`
-   - `e5_ablation_study.csv`
-   - `e5b_cmdp_floor.csv`
-   - `e6_overhead_and_crypto.csv`
-   - `c_pretrain.csv`
-   - `a_paper_track1.csv`
-   - `b_senior_as_is.csv`
-2. **Individual Protocol Files:**
-   - `protocol_aodv_results.csv`
-   - `protocol_eaurp_results.csv`
-   - `protocol_a_drl-eaurp_paper_results.csv`
-   - `protocol_b_drl-eaurp_senior_code_results.csv`
-   - `protocol_c_ar-eaurp_advancement_results.csv`
+## Showing the simulation
+
+For the live animation, start the local viewer from WSL:
+
+```bash
+python3 ns3/netanim/live_server.py --ns3-home "$NS3_HOME" --port 8767
+```
+
+Open `http://127.0.0.1:8767/`, run EAURP and AR-EAURP with the same visible settings, then explain that node movement and receptions come from native NetAnim XML while PDR, delay and detector metrics come from each run's JSON. The viewer server only launches ns-3 and relays its output. For the five-seed comparison, load the saved JSON files from `native_long_runs/` in the viewer. Avoid describing the animation alone as evidence that AR-EAURP is better.

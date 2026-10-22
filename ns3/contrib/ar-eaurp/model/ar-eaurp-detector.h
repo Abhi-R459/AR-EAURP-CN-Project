@@ -2,10 +2,11 @@
  * GAN-based behaviour anomaly detector -- AR-EAURP step 2.
  *
  * A generator learns to imitate the behaviour features of a healthy network
- * while a discriminator learns to tell real observations from imitations. What
- * is kept afterwards is the discriminator: it has learned the shape of normal
- * relaying behaviour, so a node whose behaviour falls outside that shape scores
- * low and is marked *contested*.
+ * while a discriminator learns to tell real observations from imitations. The
+ * discriminator is retained as the generator's training objective. At
+ * inference, observations are scored by distance to a bank of generated normal
+ * behaviour vectors. The discriminator output itself is not a maliciousness
+ * score because it only distinguishes training examples from generated ones.
  *
  * TRAIN / TEST SEPARATION. The detector is trained during a commissioning run
  * with no adversary present and is then frozen. It never sees an attack before
@@ -14,7 +15,7 @@
  *
  * WHY A GAN RATHER THAN A THRESHOLD. A scalar packet forwarding ratio is one
  * number and a threshold on it is trivially evaded by dropping just less than
- * the threshold. The discriminator sees eight correlated features at once,
+ * the threshold. The detector sees nine correlated features at once,
  * including the split between large and small packet drops, so "forwards
  * everything small, loses a quarter of everything large" is off-manifold even
  * though every individual feature looks defensible.
@@ -56,7 +57,7 @@ class GanAnomalyDetector
      */
     bool Fit(uint32_t epochs, uint32_t batch, double percentile);
 
-    /// Anomaly score in [0, 1]; higher means less like healthy behaviour.
+    /// Nearest generated-manifold distance; higher means less like healthy behaviour.
     double Score(const std::vector<double>& features) const;
 
     bool Flag(const std::vector<double>& features) const
@@ -91,11 +92,12 @@ class GanAnomalyDetector
     uint32_t m_latentDim;
     uint32_t m_hidden;
 
-    mutable Mlp m_discriminator;
-    Mlp m_generator;
+    Mlp m_discriminator;
+    mutable Mlp m_generator;
     std::mt19937 m_rng;
 
     std::vector<std::vector<double>> m_train;
+    std::vector<Vec> m_generatedBank;
     Vec m_mean;
     Vec m_scale;
 

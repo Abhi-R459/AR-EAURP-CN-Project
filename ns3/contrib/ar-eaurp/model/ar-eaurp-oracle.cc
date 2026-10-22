@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace ns3
 {
@@ -356,6 +357,16 @@ Oracle::ReportRevoked(Ipv4Address observer, Ipv4Address subject)
     m_revocations[observer].insert(subject);
 }
 
+uint32_t
+Oracle::HonestWitnesses(Ipv4Address subject, bool revoked) const
+{
+    const auto& reports = revoked ? m_revocations : m_contested;
+    uint32_t count = 0;
+    for (const auto& observer : reports)
+        if (!IsMalicious(observer.first) && observer.second.count(subject)) ++count;
+    return count;
+}
+
 void
 Oracle::DetectionRates(uint32_t minWitnesses,
                        double& truePositiveRate,
@@ -533,11 +544,26 @@ Oracle::Summary() const
     out["detector_auc"] = DetectorAuc();
     out["detector_windows"] = (double)m_detectorScores.size();
 
+    // Window-level detector classification at the calibrated model threshold.
+    // Keep this separate from network consensus: the latter depends on how
+    // many honest observers flag a node, not just the detector's score.
+    double detectorTp = 0.0, detectorFn = 0.0, detectorFp = 0.0, detectorTn = 0.0;
+    const double threshold = m_detector ? m_detector->Threshold() : std::numeric_limits<double>::infinity();
+    for (const auto& scored : m_detectorScores)
+    {
+        const bool flagged = scored.first > threshold;
+        if (scored.second) (flagged ? detectorTp : detectorFn)++;
+        else (flagged ? detectorFp : detectorTn)++;
+    }
+    out["detect_tpr"] = detectorTp + detectorFn > 0 ? detectorTp / (detectorTp + detectorFn) : 0.0;
+    out["detect_fpr"] = detectorFp + detectorTn > 0 ? detectorFp / (detectorFp + detectorTn) : 0.0;
+    out["detector_positive_windows"] = detectorTp + detectorFn;
+    out["detector_negative_windows"] = detectorFp + detectorTn;
     double tpr = 0.0;
     double fpr = 0.0;
     DetectionRates(2, tpr, fpr, false);
-    out["detect_tpr"] = tpr;
-    out["detect_fpr"] = fpr;
+    out["contested_tpr"] = tpr;
+    out["contested_fpr"] = fpr;
     DetectionRates(1, tpr, fpr, true);
     out["revoke_tpr"] = tpr;
     out["revoke_fpr"] = fpr;

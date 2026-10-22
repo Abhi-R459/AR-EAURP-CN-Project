@@ -56,6 +56,7 @@ build_lib(
     ${libapplications}
     ${libaodv}
     ${libflow-monitor}
+    ${libnetanim}
     ${libstats}
   TEST_SOURCES
     test/ar-eaurp-test-suite.cc

@@ -32,6 +32,7 @@
 #include "ns3/internet-module.h"
 #include "ns3/mobility-module.h"
 #include "ns3/network-module.h"
+#include "ns3/netanim-module.h"
 #include "ns3/solar-energy-harvester.h"
 #include "ns3/wifi-module.h"
 #include "ns3/wifi-radio-energy-model-helper.h"
@@ -43,6 +44,7 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <set>
 #include <sstream>
 #include <string>
@@ -125,6 +127,62 @@ class StableWifiRadioEnergyModel : public WifiRadioEnergyModel
 };
 
 static constexpr double kDepletionFraction = 1e-9;
+
+// The local viewer consumes the same XML elements that NetAnim writes. A
+// dedicated prefix keeps progress logs separate from trace data on stdout.
+static void StreamNetanimElement(const char* xml)
+{
+    std::string line(xml);
+    std::replace(line.begin(), line.end(), '\n', ' ');
+    std::replace(line.begin(), line.end(), '\r', ' ');
+    std::cout << "@NETANIM@" << line << std::endl;
+}
+
+static void NetanimEnergyTrace(AnimationInterface* animation,
+                               uint32_t counter,
+                               uint32_t node,
+                               double oldValue,
+                               double newValue)
+{
+    (void)oldValue;
+    animation->UpdateNodeCounter(counter, node, std::max(0.0, newValue));
+}
+
+static void RecordNetanimCounters(AnimationInterface* animation,
+                                  uint32_t txCounter,
+                                  uint32_t rxCounter,
+                                  uint32_t contestedCounter,
+                                  uint32_t revokedCounter,
+                                  uint32_t delayCounter,
+                                  uint32_t tprCounter,
+                                  uint32_t lambdaCounter,
+                                  NodeContainer nodes,
+                                  Ipv4InterfaceContainer addresses,
+                                  double stop)
+{
+    Oracle& oracle = Oracle::Get();
+    for (uint32_t i = 0; i < nodes.GetN(); ++i)
+    {
+        const uint32_t id = nodes.Get(i)->GetId();
+        animation->UpdateNodeCounter(contestedCounter, id,
+                                     oracle.HonestWitnesses(addresses.GetAddress(i), false));
+        animation->UpdateNodeCounter(revokedCounter, id,
+                                     oracle.HonestWitnesses(addresses.GetAddress(i), true));
+    }
+    animation->UpdateNodeCounter(txCounter, nodes.Get(0)->GetId(), oracle.AppTx());
+    animation->UpdateNodeCounter(rxCounter, nodes.Get(0)->GetId(), oracle.AppRx());
+    animation->UpdateNodeCounter(delayCounter, nodes.Get(0)->GetId(), oracle.MeanDelayMs());
+    double tpr = 0.0, fpr = 0.0;
+    oracle.DetectionRates(2, tpr, fpr, false);
+    animation->UpdateNodeCounter(tprCounter, nodes.Get(0)->GetId(), tpr);
+    animation->UpdateNodeCounter(lambdaCounter, nodes.Get(0)->GetId(),
+                                 oracle.Agent() ? oracle.Agent()->Lambda() : 0.0);
+    if (Simulator::Now().GetSeconds() + 0.5 <= stop)
+        Simulator::Schedule(Seconds(0.5), &RecordNetanimCounters, animation,
+                            txCounter, rxCounter, contestedCounter,
+                            revokedCounter, delayCounter, tprCounter, lambdaCounter,
+                            nodes, addresses, stop);
+}
 
 static void DepleteRadio(uint32_t node, Ptr<WifiPhy> phy)
 {
@@ -212,6 +270,13 @@ struct ScenarioConfig
     bool flowMonitor{false};
     bool verbose{false};
     bool printNeighbours{false};
+    std::string netanimPath;
+    double netanimStart{0.0};
+    double netanimStop{0.0}; //!< zero means through cooldown
+    double netanimPoll{0.25};
+    uint32_t netanimMaxPackets{100000};
+    bool netanimStream{false};
+    bool realtime{false};
 };
 
 /// Build, run and tear down one network. Returns the measurement summary.
@@ -498,6 +563,8 @@ RunOnce(const ScenarioConfig& cfg, bool commissioning, uint32_t runOffset)
     keyRng->SetStream(600000);
 
     ApplicationContainer apps;
+    std::vector<uint32_t> sourceFlows(cfg.nodes, 0);
+    std::vector<uint32_t> sinkFlows(cfg.nodes, 0);
     for (uint32_t f = 0; f < cfg.flows; ++f)
     {
         uint32_t src = flowRng->GetInteger(0, cfg.nodes - 1);
@@ -506,6 +573,8 @@ RunOnce(const ScenarioConfig& cfg, bool commissioning, uint32_t runOffset)
         {
             dst = flowRng->GetInteger(0, cfg.nodes - 1);
         }
+        ++sourceFlows[src];
+        ++sinkFlows[dst];
         const uint16_t port = 9000 + f;
 
         ArTrafficHelper sink;
@@ -556,6 +625,83 @@ RunOnce(const ScenarioConfig& cfg, bool commissioning, uint32_t runOffset)
     if (cfg.flowMonitor && !commissioning)
     {
         monitor = flowHelper.InstallAll();
+    }
+
+    // The trace is attached only to evaluation. Commissioning is a separate
+    // simulator run and must never be mixed into the visible attack scenario.
+    std::unique_ptr<AnimationInterface> animation;
+    std::vector<Callback<void, double, double>> netanimEnergyCallbacks;
+    if (!commissioning && !cfg.netanimPath.empty())
+    {
+        animation = std::make_unique<AnimationInterface>(cfg.netanimPath);
+        animation->SetMaxPktsPerTraceFile(cfg.netanimMaxPackets);
+        if (cfg.netanimStream)
+        {
+            animation->SetAnimWriteCallback(&StreamNetanimElement);
+            for (uint32_t i = 0; i < nodes.GetN(); ++i)
+            {
+                const Vector position = nodes.Get(i)->GetObject<MobilityModel>()->GetPosition();
+                std::cout << "@NETANIM@<node id=\"" << nodes.Get(i)->GetId()
+                          << "\" locX=\"" << position.x << "\" locY=\""
+                          << position.y << "\"/>" << std::endl;
+            }
+        }
+        animation->SetMobilityPollInterval(Seconds(cfg.netanimPoll));
+        animation->SetStartTime(Seconds(cfg.netanimStart));
+        animation->SetStopTime(Seconds(cfg.netanimStop > 0
+                                            ? cfg.netanimStop
+                                            : duration + cfg.cooldown));
+        animation->EnablePacketMetadata(true);
+        for (uint32_t i = 0; i < nodes.GetN(); ++i)
+        {
+            std::ostringstream description;
+            description << "Node " << i << " | " << interfaces.GetAddress(i) << " | "
+                        << (hostile.count(i) ? cfg.attack : "honest")
+                        << " | source flows " << sourceFlows[i]
+                        << " | sink flows " << sinkFlows[i]
+                        << " | protocol " << cfg.protocol;
+            animation->UpdateNodeDescription(nodes.Get(i), description.str());
+            if (hostile.count(i))
+                animation->UpdateNodeColor(nodes.Get(i), 239, 68, 68);
+            else if (sourceFlows[i] && sinkFlows[i])
+                animation->UpdateNodeColor(nodes.Get(i), 167, 139, 250);
+            else if (sourceFlows[i])
+                animation->UpdateNodeColor(nodes.Get(i), 56, 189, 248);
+            else if (sinkFlows[i])
+                animation->UpdateNodeColor(nodes.Get(i), 244, 114, 182);
+            else
+                animation->UpdateNodeColor(nodes.Get(i), 74, 222, 128);
+        }
+        const uint32_t batteryCounter = animation->AddNodeCounter(
+            "BatteryJ", AnimationInterface::DOUBLE_COUNTER);
+        for (uint32_t i = 0; i < sources.GetN(); ++i)
+        {
+            const uint32_t id = nodes.Get(i)->GetId();
+            animation->UpdateNodeCounter(batteryCounter, id, cfg.initialEnergy);
+            auto callback = MakeBoundCallback(&NetanimEnergyTrace,
+                                              animation.get(), batteryCounter, id);
+            sources.Get(i)->TraceConnectWithoutContext("RemainingEnergy", callback);
+            netanimEnergyCallbacks.push_back(callback);
+        }
+        const uint32_t txCounter = animation->AddNodeCounter(
+            "AppTx", AnimationInterface::DOUBLE_COUNTER);
+        const uint32_t rxCounter = animation->AddNodeCounter(
+            "AppRx", AnimationInterface::DOUBLE_COUNTER);
+        const uint32_t contestedCounter = animation->AddNodeCounter(
+            "ContestedWitnesses", AnimationInterface::DOUBLE_COUNTER);
+        const uint32_t revokedCounter = animation->AddNodeCounter(
+            "RevokedWitnesses", AnimationInterface::DOUBLE_COUNTER);
+        const uint32_t delayCounter = animation->AddNodeCounter(
+            "MeanAppDelayMs", AnimationInterface::DOUBLE_COUNTER);
+        const uint32_t tprCounter = animation->AddNodeCounter(
+            "DetectTPR", AnimationInterface::DOUBLE_COUNTER);
+        const uint32_t lambdaCounter = animation->AddNodeCounter(
+            "CmdpLambda", AnimationInterface::DOUBLE_COUNTER);
+        Simulator::ScheduleNow(&RecordNetanimCounters, animation.get(),
+                               txCounter, rxCounter, contestedCounter,
+                               revokedCounter, delayCounter, tprCounter, lambdaCounter,
+                               nodes, interfaces,
+                               cfg.netanimStop > 0 ? cfg.netanimStop : duration + cfg.cooldown);
     }
 
     double energyAtEnd = 0.0;
@@ -686,6 +832,10 @@ RunOnce(const ScenarioConfig& cfg, bool commissioning, uint32_t runOffset)
         summary["flowmon_rx"] = (double)rx;
     }
 
+    for (uint32_t i = 0; i < netanimEnergyCallbacks.size(); ++i)
+        sources.Get(i)->TraceDisconnectWithoutContext("RemainingEnergy",
+                                                      netanimEnergyCallbacks[i]);
+    animation.reset();
     Simulator::Destroy();
     return summary;
 }
@@ -738,6 +888,13 @@ ns3::arEaurp::RunScenarioCommand(int argc, char* argv[], Measurements* output)
     cmd.AddValue("seed", "RNG seed", cfg.seed);
     cmd.AddValue("run", "RNG run number", cfg.run);
     cmd.AddValue("flowMonitor", "also measure with FlowMonitor", cfg.flowMonitor);
+    cmd.AddValue("netanim", "write evaluation NetAnim XML to this path", MakeBoundCallback(&SetString, &cfg.netanimPath));
+    cmd.AddValue("netanimStart", "first simulated second in the NetAnim trace", cfg.netanimStart);
+    cmd.AddValue("netanimStop", "last simulated second in the NetAnim trace (0 = end)", cfg.netanimStop);
+    cmd.AddValue("netanimPoll", "node position sampling interval in seconds", cfg.netanimPoll);
+    cmd.AddValue("netanimMaxPackets", "packets per NetAnim XML file before splitting", cfg.netanimMaxPackets);
+    cmd.AddValue("netanimStream", "stream NetAnim XML elements to stdout for the local viewer", cfg.netanimStream);
+    cmd.AddValue("realtime", "pace evaluation against wall time (best effort)", cfg.realtime);
     cmd.AddValue("verbose", "print per-run detail", cfg.verbose);
     cmd.AddValue("neighbours", "report the protocol's own neighbour counts",
                  cfg.printNeighbours);
@@ -768,6 +925,12 @@ ns3::arEaurp::RunScenarioCommand(int argc, char* argv[], Measurements* output)
         !std::isfinite(cfg.txPower) || !std::isfinite(cfg.sensitivity) ||
         !std::isfinite(cfg.pathLossExponent) || cfg.pathLossExponent <= 0 ||
         cfg.seed == 0 || cfg.run == 0 || cfg.ganEpochs == 0 || cfg.lstmEpochs == 0 ||
+        !std::isfinite(cfg.netanimStart) || cfg.netanimStart < 0 ||
+        !std::isfinite(cfg.netanimStop) || cfg.netanimStop < 0 ||
+        (cfg.netanimStop > 0 && cfg.netanimStop <= cfg.netanimStart) ||
+        !std::isfinite(cfg.netanimPoll) || cfg.netanimPoll <= 0 ||
+        cfg.netanimMaxPackets == 0 ||
+        (cfg.netanimStream && cfg.netanimPath.empty()) ||
         (cfg.attack == "none" && cfg.malicious > 0) ||
         (cfg.protocol == "ns3-aodv" && cfg.malicious > 0))
     {
@@ -783,7 +946,7 @@ ns3::arEaurp::RunScenarioCommand(int argc, char* argv[], Measurements* output)
     Oracle& oracle = Oracle::Get();
     std::map<std::string, double> modelStats{
         {"gan_trained", 0.0}, {"lstm_trained", 0.0}, {"gan_train_windows", 0.0},
-        {"gan_threshold", 0.0}, {"lstm_mae_w", 0.0}, {"lstm_train_sequences", 0.0}, {"lstm_validation_sequences", 0.0},
+        {"gan_threshold", 0.0}, {"lstm_mae_w", 0.0}, {"lstm_selected", 0.0}, {"lstm_train_sequences", 0.0}, {"lstm_validation_sequences", 0.0},
         {"lstm_persistence_mae_w", 0.0}, {"lstm_window_mean_mae_w", 0.0}};
 
     if (cfg.protocol == "ar-eaurp" && trainModels && (cfg.useGan || (cfg.useLstm && cfg.harvest)))
@@ -820,12 +983,14 @@ ns3::arEaurp::RunScenarioCommand(int argc, char* argv[], Measurements* output)
         {
             const double mae = forecaster->Fit(cfg.lstmEpochs, 5e-3);
             modelStats["lstm_trained"] = forecaster->IsTrained() ? 1.0 : 0.0;
+            modelStats["lstm_selected"] = forecaster->UsesLstm() ? 1.0 : 0.0;
             modelStats["lstm_train_sequences"] = forecaster->TrainingSequences();
             modelStats["lstm_validation_sequences"] = forecaster->ValidationSequences();
             std::cout << "[commissioning] forecaster: " << forecaster->TrainingSequences()
                       << " sequences, MAE " << mae << " W vs persistence "
                       << forecaster->PersistenceMae() << " W, window mean "
-                      << forecaster->SeasonalMae() << " W" << std::endl;
+                      << forecaster->SeasonalMae() << " W; selected "
+                      << (forecaster->UsesLstm() ? "LSTM" : "persistence") << std::endl;
             modelStats["lstm_mae_w"] = mae;
             modelStats["lstm_persistence_mae_w"] = forecaster->PersistenceMae();
             modelStats["lstm_window_mean_mae_w"] = forecaster->SeasonalMae();
@@ -840,6 +1005,9 @@ ns3::arEaurp::RunScenarioCommand(int argc, char* argv[], Measurements* output)
     std::cout << "[evaluation] " << cfg.protocol << " / " << cfg.attack << " @ "
               << (100.0 * cfg.malicious) << "% , " << cfg.nodes << " nodes, " << cfg.duration
               << " s" << std::endl;
+    if (cfg.realtime)
+        GlobalValue::Bind("SimulatorImplementationType",
+                          StringValue("ns3::RealtimeSimulatorImpl"));
     std::map<std::string, double> result = RunOnce(cfg, false, 0);
 
     for (const auto& kv : modelStats)
@@ -878,11 +1046,17 @@ ns3::arEaurp::RunScenarioCommand(int argc, char* argv[], Measurements* output)
     result["cfg_ecc"] = cfg.ecc;
     result["cfg_pdr_floor"] = cfg.pdrFloor;
     result["cfg_nodes"] = cfg.nodes;
+    result["cfg_area"] = cfg.area;
     result["cfg_malicious"] = cfg.malicious;
     result["cfg_max_speed"] = cfg.maxSpeed;
     result["cfg_flows"] = cfg.flows;
     result["cfg_rate"] = cfg.rate;
     result["cfg_duration"] = cfg.duration;
+    result["cfg_commission"] = cfg.commission;
+    result["cfg_gan_epochs"] = cfg.ganEpochs;
+    result["cfg_lstm_epochs"] = cfg.lstmEpochs;
+    result["cfg_train"] = trainModels ? 1.0 : 0.0;
+    result["cfg_realtime"] = cfg.realtime ? 1.0 : 0.0;
     result["cfg_energy_j"] = cfg.initialEnergy;
     result["cfg_harvest"] = cfg.harvest ? 1.0 : 0.0;
     result["cfg_run"] = cfg.run;

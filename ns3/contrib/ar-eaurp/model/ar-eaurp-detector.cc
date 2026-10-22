@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace ns3
 {
@@ -174,9 +175,26 @@ GanAnomalyDetector::Fit(uint32_t epochs, uint32_t batch, double percentile)
 
     m_trained = true;
 
-    // Calibrate the threshold on the clean data itself: the requested
-    // percentile of clean scores is by construction the false-positive rate we
-    // accept on healthy behaviour.
+    // Approximate the learned healthy manifold with generated samples. The
+    // discriminator is useful for training the generator, but its output only
+    // distinguishes training examples from generator output; it is not itself
+    // an anomaly score for malicious observations.
+    m_generatedBank.clear();
+    constexpr size_t kGeneratedSamples = 2048;
+    m_generatedBank.reserve(kGeneratedSamples);
+    for (size_t i = 0; i < kGeneratedSamples; ++i)
+    {
+        Vec z(m_latentDim, 0.0);
+        for (auto& v : z)
+        {
+            v = noise(m_rng);
+        }
+        const Vec generated = m_generator.Forward(z);
+        m_generatedBank.push_back(generated);
+    }
+
+    // Calibrate the threshold on clean samples with the exact same nearest-
+    // manifold metric used during evaluation.
     std::vector<double> scores;
     scores.reserve(m_train.size());
     for (const auto& s : m_train)
@@ -193,14 +211,24 @@ GanAnomalyDetector::Fit(uint32_t epochs, uint32_t batch, double percentile)
 double
 GanAnomalyDetector::Score(const std::vector<double>& features) const
 {
-    if (!m_trained || features.size() != m_featureDim)
+    if (!m_trained || features.size() != m_featureDim || m_generatedBank.empty())
     {
         return 0.0;
     }
     Vec z;
     Standardise(features, z);
-    const Vec& d = m_discriminator.Forward(z);
-    return 1.0 - d[0];
+    double nearest = std::numeric_limits<double>::infinity();
+    for (const auto& generated : m_generatedBank)
+    {
+        double squared = 0.0;
+        for (uint32_t i = 0; i < m_featureDim; ++i)
+        {
+            const double difference = z[i] - generated[i];
+            squared += difference * difference;
+        }
+        nearest = std::min(nearest, squared);
+    }
+    return std::sqrt(nearest / static_cast<double>(m_featureDim));
 }
 
 } // namespace arEaurp
