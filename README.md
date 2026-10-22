@@ -202,6 +202,8 @@ the study README so they are not mixed with the held-out comparison.
 
 The report folder is included in the repository as reproducibility evidence:
 
+- [Current research paper (Word)](AR_EAURP_Research_Paper.docx)
+- [Editable research-paper source](paper/AR_EAURP_Research_Paper.md)
 - [Paper-style report (HTML)](results/ns3-native-paper-review/paper_results.html)
 - [Paper-style report (Markdown)](results/ns3-native-paper-review/paper_results.md)
 - [Study settings and completion manifest](results/ns3-native-paper-review/study_settings.json)

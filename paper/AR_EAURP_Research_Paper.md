@@ -1,21 +1,22 @@
 ---
 title: "AR-EAURP: An Adversarial-Resilient and Energy-Harvesting-Aware Routing Stack for Mobile Ad Hoc Networks"
 author: "AR-EAURP Project"
-date: "18 September 2026"
+date: "22 October 2026"
 ---
 
 ## Design, implementation, reproducible evaluation, and deployment boundaries
 
 **Manuscript type:** research and systems paper  
 **Repository:** `AR-EAURP-CN-Project`  
-**Version:** 18 September 2026  
+**Version:** 22 October 2026
+
 **Status:** reproducible project manuscript; quantitative claims are limited to the artifacts and CSV checkpoints committed with the repository.
 
 ## Abstract
 
 Mobile ad hoc networks (MANETs) combine three sources of instability: links change as nodes move, relays operate under finite or intermittent energy, and routing decisions are exposed to adversarial nodes. This project develops and evaluates AR-EAURP, an adversarial-resilient and energy-harvesting-aware extension of an energy- and trust-aware routing design. The work is deliberately structured as both a protocol implementation and an evaluation audit. It re-implements the equations of the source DRL-EAURP manuscript, preserves the delivered senior implementation for an as-is comparison, and adds a mechanistic routing harness in which packets traverse real multi-hop paths rather than being delivered by a single global coin flip.
 
-AR-EAURP combines size-conditioned watchdog observations, a clean-trained GAN-style behaviour detector, a forecast of near-term harvested energy from an LSTM, and a constrained deep-Q routing agent. Its threat model includes black holes, selective-forwarding gray holes, and trust poisoning. In the full-profile common-harness rerun (400 rounds, five seeds), the gray-hole attack is the decisive case: scalar packet-forwarding-ratio trust achieves 0.002 or less mean detection recall across non-zero adversarial fractions, while AR-EAURP reaches 0.334. At 30% gray-hole nodes, AR-EAURP obtains PDR 0.502 (95% CI 0.430–0.575), detection recall 0.293 (0.201–0.386) and false-positive rate 0.014 (0.003–0.026); AODV obtains PDR 0.465 (0.393–0.536) and no detection signal. The shorter two-seed checkpoint is retained as a separate result, where detection is stronger but uncertainty is wider. The result is not a universal performance win: the full system has higher computational cost, its requested 0.90 PDR constraint is infeasible in the evaluated topology, and the LSTM advantage depends on training horizon and workload. The main contribution is therefore a reproducible, mechanistic and falsifiable evaluation pipeline that identifies where the advancement works, where it does not, and which assumptions dominate the result.
+AR-EAURP combines size-conditioned watchdog observations, a clean-trained GAN-style behaviour detector, harvested-energy forecasting with a persistence fallback, and a constrained deep-Q routing agent. Its threat model includes black holes, selective-forwarding gray holes, and trust poisoning. A Python common-harness evaluation and a separate native ns-3.45 study assess different models and are reported independently. In the ns-3 review matrix, 863 of 905 planned runs were completed across 179 of 181 conditions; the density sweep is incomplete. In the 24-node, six-flow attack experiment, detector performance at 30% gray-hole prevalence was modest (TPR 7.82% ± 4.98%, FPR 5.24% ± 5.14%, AUC 0.55 ± 0.07). Across 18 matched AR-EAURP–EAURP attack/prevalence contrasts, only one unadjusted 95% interval excluded zero. A separate 30-pair commissioning study estimated a +1.16 percentage-point PDR difference for AR-EAURP (95% paired CI −2.97 to +5.30), which is inconclusive. These results do not establish universal or statistically robust routing superiority. They show the importance of matching claims to the simulator, workload, completed replications and measured outcomes, and provide a reproducible evaluation pipeline for further study.
 
 **Keywords:** mobile ad hoc networks, MANET security, trust-aware routing, gray-hole attack, energy harvesting, GAN anomaly detection, LSTM forecasting, constrained Markov decision process, deep Q-learning, reproducible simulation
 
@@ -31,7 +32,7 @@ The project studied here, AR-EAURP, addresses that problem through a layered des
 2. energy harvesting and short-horizon energy prediction, so route selection can distinguish a node that is currently weak but about to recharge from one that is weak and depleting; and
 3. a constrained routing agent that chooses among route strategies while penalising violations of a target packet-delivery ratio.
 
-The project contains more than a protocol sketch. It includes a vectorised Python simulator, a common comparison harness, a native re-implementation of the source equations, a preserved copy of the delivered senior logic, an ns-3 implementation with real 802.11 packet paths, and a Flutter application named RelayMesh for direct nearby-device messaging. These artifacts serve different purposes and must not be conflated. The Python harness supplies the quantitative tables in this paper. The ns-3 tree is a higher-fidelity implementation path. RelayMesh is a deployment-facing direct-message application and is not a multi-hop evaluation of AR-EAURP.
+The project contains more than a protocol sketch. It includes a vectorised Python simulator, a common comparison harness, a native re-implementation of the source equations, a preserved copy of the delivered senior logic, an ns-3 implementation with 802.11 packet paths, and a Flutter application named RelayMesh for direct nearby-device messaging. These artifacts serve different purposes and must not be conflated. The paper reports separate quantitative evaluations from the Python harness and the native ns-3 study; their scenarios and metrics are not pooled. RelayMesh is a deployment-facing direct-message application and is not a multi-hop evaluation of AR-EAURP.
 
 ### 1.1 Research questions
 
@@ -52,7 +53,7 @@ The evaluation is organised around five questions:
 This paper makes four practical contributions:
 
 - It gives a complete, code-grounded description of the AR-EAURP stack and its threat model.
-- It separates native paper reproduction from fair common-harness comparison, preventing incomparable PDR values from being presented as one experiment.
+- It separates native paper reproduction, fair Python common-harness comparison, and the ns-3.45 review matrix, preventing incomparable PDR values from being presented as one experiment.
 - It reports stored results, ablations and failure cases—including an infeasible CMDP target and a forecast model that loses to a simple seasonal baseline.
 - It documents the project boundary between the Python simulator, the ns-3 implementation and the RelayMesh application, enabling future work to choose the appropriate validation layer.
 
@@ -86,7 +87,7 @@ Constrained Markov decision processes (CMDPs) formalise sequential decisions sub
 
 Recent work raises the standard beyond reporting a single PDR curve. A 2025 DRL-MANET study combines deep Q-learning, residual energy, trust, link quality and anomaly detection, and evaluates routing security and QoS together [11]. A 2025 MASS paper addresses RL instability with an expert-initialised, conservative policy and reports worst-case behaviour in addition to average performance [12]. A 2024 secure-routing study instead provides a protocol-level guarantee against fabricated, compromised or replayed route replies under an explicit security association assumption [13]. Recent work also increasingly uses graph-aware or topology-aware learning rather than a fixed global state [14].
 
-These papers are not direct numerical baselines for this project: they use different mobility, traffic, threat, channel and simulator assumptions. They are nevertheless useful competitive references because they define expectations for (i) comparable baselines, (ii) explicit attack and trust assumptions, (iii) variance or worst-case reporting, (iv) ablations against simpler alternatives, and (v) a clear separation between empirical robustness and formal security guarantees. AR-EAURP is strongest on selective-forwarding observability and code-grounded auditability. It is not yet stronger on formal guarantees, graph-scale learning, radio-calibrated validation or statistically powered cross-paper comparisons.
+These papers are not direct numerical baselines for this project: they use different mobility, traffic, threat, channel and simulator assumptions. They are nevertheless useful competitive references because they define expectations for (i) comparable baselines, (ii) explicit attack and trust assumptions, (iii) variance or worst-case reporting, (iv) ablations against simpler alternatives, and (v) a clear separation between empirical robustness and formal security guarantees. The current evidence supports code-grounded auditability, but native ns-3 detection remains weak and the delivery comparisons are inconclusive. The project does not establish formal guarantees, graph-scale learning, radio-calibrated validation or superiority to these systems.
 
 ---
 
@@ -96,12 +97,12 @@ The repository is organised into four functional layers.
 
 | Layer | Main artifacts | Role in this paper |
 |---|---|---|
-| Common Python harness | `src/common/`, `src/routing/`, `experiments/` | Quantitative Track 2 evaluation |
+| Common Python harness | `src/common/`, `src/routing/`, `experiments/` | Historical Python comparison and the earlier Colab-review result; reported separately from ns-3 |
 | Native implementations | `src/a_drl_eaurp/`, `src/b_senior/`, `src/c_ar_eaurp/` | Paper reproduction and advancement comparison |
-| ns-3 implementation | `ns3/contrib/ar-eaurp/`, `ns3/scratch/` | Higher-fidelity packet/radio validation path; not the source of the stored tables |
+| ns-3 implementation | `ns3/contrib/ar-eaurp/`, `ns3/scratch/` | Native C++ packet/radio evaluation reported separately in Track 3 |
 | RelayMesh application | `app/` | Direct nearby-device Flutter messenger; deployment-facing artifact, not a MANET protocol benchmark |
 
-The ns-3 implementation uses a real IPv4 stack, 802.11 ad hoc radios, log-distance path loss, Nakagami fading, mobility, UDP flows, energy sources and a solar harvester. Its protocol class exposes AODV, EAURP and AR-EAURP variants through one code path. The Flutter app uses Wi-Fi Direct for Android-to-Android communication and Multipeer Connectivity for Apple-to-Apple communication. Android and Apple transports are currently separate, and Chrome is a UI preview rather than a nearby-radio test.
+The ns-3 implementation uses an IPv4 stack, 802.11 ad hoc radios, log-distance path loss, Nakagami fading, mobility, UDP flows, energy sources and a solar harvester. Its protocol class exposes AODV, EAURP and DRL/AR-EAURP variants through a shared simulation harness. The Flutter app uses Wi-Fi Direct for Android-to-Android communication and Multipeer Connectivity for Apple-to-Apple communication. Android and Apple transports are currently separate, and Chrome is a UI preview rather than a nearby-radio test.
 
 The system boundary is important: a direct phone-to-phone chat is not evidence of multi-hop AR-EAURP routing, and a Python channel model is not evidence of radio realism. Each artifact is reported for what it actually validates.
 
@@ -109,7 +110,9 @@ The system boundary is important: a direct phone-to-phone chat is not evidence o
 
 ## 4. Protocol design
 
-### 4.1 Common MANET model
+This section describes the protocol design and the legacy Python experiment model. Python-specific geometry and channel assumptions are explicitly identified; native ns-3 configuration is specified in Section 5 and should be used when interpreting the current results.
+
+### 4.1 Legacy Python common-harness model
 
 The common harness deploys (N) nodes in a 1000 m × 1000 m square. Nodes move toward randomly selected destinations. A link exists when the Euclidean distance is at most 150 m:
 
@@ -246,341 +249,205 @@ The implementation uses a DQN with replay and a target network when PyTorch is a
 
 ## 5. Experimental methodology
 
-### 5.1 Two-track evaluation
+### 5.1 Evaluation stages and evidence scope
 
-The project uses two tracks because the native senior model and the common harness measure different objects.
+This paper distinguishes three evidence sources. The earlier Python/Colab review is retained as historical context because it used a different simulator and model. The current primary evaluation is a native C++ implementation in ns-3.45. A separate 30-pair ns-3 study evaluates a later CMDP commissioning change. Outcomes from these stages are not pooled: topology, packet and radio models, commissioning, run numbers, observation windows, and detector instrumentation differ.
 
-**Track 1: native form.** A is re-implemented from the DRL-EAURP equations. B is the delivered senior logic preserved verbatim. Both use the source probabilistic model, including a global delivery probability and no actual route traversal. This track tests reproduction and exposes internal inconsistencies.
+The earlier Python full-profile gray-hole result presented during the Colab review at 30% hostile nodes reported PDR 50.25% ± 5.86% for AR-EAURP and 47.92% ± 5.24% for EAURP (five runs), a descriptive difference of +2.32 percentage points. The earlier analysis also reported detector TPR of 29.3% ± 9.2% and FPR of 1.4% ± 1.3% for AR-EAURP. These are historical Python-harness results, not ns-3 measurements. They are included to document what was presented at the previous review; they are not evidence that the native ns-3 implementation has the same performance.
 
-**Track 2: common mechanistic harness.** A, B and C are routing policies plugged into the same simulator as AODV and EAURP. For a given seed they receive identical topology, mobility, traffic, channel and adversary streams. Every packet traverses its selected path hop by hop.
+### 5.2 Native ns-3.45 configuration
 
-Track 1 PDR values must not be compared numerically with Track 2 PDR values. A high Track 1 PDR can coexist with a lower Track 2 PDR because the latter includes partitions, route failures, link failures, relay energy and adversarial forwarding.
+The E1–E6 review matrix used a 24-node, six-flow review scenario over a 420 m square area, with 120 s of measured simulation, 20 s warm-up and 10 s cooldown. Each CBR flow generated one packet/s; packet sizes were uniformly sampled between 512 and 1024 bytes. Nodes began with 350 J, used a 1–20 m/s mobility range, and had a 150 m routing-neighbour range. The radio used 16.0206 dBm transmit power, −96 dBm receiver sensitivity and a path-loss exponent of 3.0. Harvesting was enabled by default. AR-EAURP received 240 s of clean commissioning; GAN and LSTM training budgets were 120 and 30 epochs respectively. The master seed was 20260909 and five run numbers were planned for each condition.
 
-### 5.3 Statistical protocol and claims ladder
+The ns-3 implementation uses an IPv4 and 802.11 ad hoc stack, scheduled packet events, routing and queue behaviour, energy sources and harvesting. This is a simulated radio environment, not a physical testbed or calibrated field measurement. A separate CMDP commissioning study used a 24-node, six-flow, 420 m topology, 25% gray-hole prevalence, 120 s measured window, 20 s warm-up, seed 1 and matched run numbers 21–50. It trained the CMDP selector in a separate clean commissioning phase before attacked evaluation.
 
-Each configuration is evaluated on common random-number streams: the same seed controls topology, mobility, traffic, channel draws and attacker placement for every policy. The stored quick checkpoint contains two seeds per configuration and reports the sample standard deviation. The full profile is configured for five seeds and 400 rounds; when a full-profile table is reported, its uncertainty is the mean plus or minus a 95% Student t confidence interval over those independent seeds. We do not treat packets, watchdog observations or timesteps as independent experimental replicates.
+### 5.3 Experiment matrix
 
-The analysis uses three claim levels. Level 1 is an implementation claim, supported by tests and source-to-code tracing. Level 2 is a within-harness empirical claim, supported by paired seeds and effect sizes against the named baselines. Level 3 is a general MANET or state-of-the-art claim, which requires multiple simulators or hardware, stronger baselines, attack adaptation, and either formal analysis or external replication. The present paper makes Level 1 and targeted Level 2 claims; it does not claim Level 3 universal superiority.
+| Experiment | Factors varied | Planned conditions | Planned runs |
+|---|---|---:|---:|
+| E1 mobility | Five protocols × 1, 5, 10, 15, 20 m/s | 25 | 125 |
+| E2 density | Five protocols × 60, 80, 100, 120, 150, 200 nodes | 30 | 150 |
+| E3 attacks | Five protocols × three attacks × 0–50% hostile nodes in 10-point steps | 90 | 450 |
+| E4 energy | Five protocols × battery or solar/kinetic harvesting | 10 | 50 |
+| E4b lifetime | Five protocols × battery or harvesting, 900 s horizon | 10 | 50 |
+| E5 ablation | Six AR-EAURP component variants | 6 | 30 |
+| E5b CMDP floor | Requested PDR floors 0.70, 0.80, 0.90, 0.95 | 4 | 20 |
+| E6 overhead | Five protocols plus AR-EAURP without ECC | 6 | 30 |
 
-### 5.2 Parameters and metrics
+The protocol set is AODV, EAURP, paper DRL-EAURP, senior-code DRL-EAURP and AR-EAURP. Attacks are black hole, gray hole and trust poisoning. Each experiment condition has its own factor settings and is listed in the committed configuration ledger.
 
-| Parameter | Value |
-|---|---:|
-| Deployment area | 1000 m × 1000 m |
-| Nodes in headline Track 2 | 100 |
-| Communication range | 150 m |
-| Track 2 evaluation window in stored checkpoints | 200 rounds |
-| Stored Track 2 repetitions | 2 seeds per configuration |
-| Persistent flows | 40 |
-| Packets per round | 4 |
-| Packet size | 512–1024 bytes |
-| Adversarial fractions | 0%, 10%, 20%, 30%, 40%, 50% |
-| Attacks | black hole, gray hole, trust poisoning |
-| Trust threshold | PFR < 0.60 |
-| Relay energy gate | 20% of initial energy |
-| GAN detection threshold | 95th clean percentile |
-| CMDP target | PDR >= 0.90 |
+### 5.4 Metrics and statistical analysis
 
-The primary metrics are packet delivery ratio (PDR), PDR conditional on a route existing, mean delay, throughput, loss cause, detection true-positive rate (TPR), false-positive rate (FPR), lifetime, control packets per round and wall-clock runtime. Detection metrics compare each protocol's verdict against the known roles assigned by the simulator. AODV has no detector and therefore reports zero TPR/FPR by design.
+PDR is application packets received divided by application packets sent in the measurement window, including arrivals during cooldown. Delay and throughput are application-level measurements. E3 detector TPR, FPR and AUC refer to AR-EAURP's per-window anomaly score; they are not available for baseline protocols that do not implement this detector. The report separately records contested-node and revocation outcomes so a detector alert is not conflated with consensus or action.
 
-Throughput follows the repository's reporting convention: delivered bits divided by rounds and scaled by 1000. It is therefore a project-comparable throughput index, not a claim of calibrated physical-layer kilobits per second.
+For replicated conditions, the report presents arithmetic means and sample standard deviations across observed run numbers. Per-condition 95% confidence intervals use a two-sided Student t interval and are omitted for n=1. Bounded rate intervals are restricted to [0,1]. E3 paired comparisons use matching run numbers for AR-EAURP and EAURP. Their intervals are unadjusted across 18 attack/prevalence cells and therefore exploratory. Matching run numbers does not guarantee event-level identical random draws because protocol actions can consume random streams differently.
 
-### 5.3 Provenance of the stored results
+### 5.5 Reproducibility and result provenance
 
-The checked-in CSVs are generated artifacts, not manually transcribed tables. The stored Track 2 sweep files identify two runs and 200 completed rounds for the quick profile. The code also supports a full profile with 400 rounds and five runs for Track 2, and longer native/lifetime experiments. Results below are therefore labelled as stored checkpoints, not as a claim that every table was generated by the full profile.
-
-The principal files are:
-
-| Result | CSV |
-|---|---|
-| Native paper track | `results/csv/a_paper_track1.csv`, `b_senior_as_is.csv` |
-| Speed and clean comparison | `results/csv/e1_speed.csv` |
-| Density | `results/csv/e2_density.csv` |
-| Attack sweep | `results/csv/e3_attack.csv` |
-| Full-profile attack robustness check | `output/full_results/csv/e3_attack.csv` |
-| Energy and lifetime | `results/csv/e4_energy.csv`, `e4b_lifetime.csv` |
-| Detector/forecaster pre-training | `results/csv/c_pretrain.csv`, `e4c_lstm_accuracy.csv` |
-| Ablation and CMDP feasibility | `results/csv/e5_ablation.csv`, `e5b_cmdp_floor.csv` |
-| Full-profile ablation check | `output/full_results_e5/csv/e5_ablation.csv` |
-| Overhead | `results/csv/e6_overhead.csv` |
-
-The experiment entry point is:
-
-```bash
-pip install -r requirements.txt
-python experiments/run_all.py --profile quick
-python experiments/run_all.py --profile full --skip-track1 --only e3 --out-dir output/full_results --fresh
-python experiments/run_all.py --profile full --skip-track1 --only e5 --out-dir output/full_results_e5 --fresh
-python tools/make_report.py
-python -m compileall -q src experiments tests tools
-python -m pytest tests/ -q
-```
+The native review report records the simulator version and source identity, configuration factors, exact per-run command-line parameters, seed/run numbers, simulator-reported settings, raw checkpoint checksums, CSV summaries, figures and completion status. The separate CMDP commissioning study stores its JSON outputs and native simulator logs. Results below are extracted from those saved artifacts; incomplete runs are not imputed.
 
 ---
 
 ## 6. Results
 
-### 6.1 Implementation validity
+### 6.1 Completion of the native evaluation
 
-The repository's numpy-only validation suite passes **26/26 tests**. The tests cover topology symmetry, communication-range enforcement, mobility bounds, route validity, energy gating, revocation, watchdog arithmetic, gray-hole evasion of the scalar threshold, black-hole forwarding, slander reports, energy excuses and adversarial placement.
+The E1–E6 matrix completed 179 of 181 planned conditions and 863 of 905 planned native runs. E1, E3, E4, E4b, E5, E5b and E6 completed their planned run counts. E2 completed 28 of 30 conditions and 108 of 150 runs. High-density conditions include single-run observations, and two planned conditions are absent. The partial density sweep cannot support replicated inference at those node counts.
 
-The most important validity test is `test_grayhole_evades_the_trust_threshold`. It confirms that the configured gray hole keeps aggregate observed PFR above 0.60 while large- and small-packet forwarding ratios separate. Without this property, the detector would be solving a threat that the baseline already detects.
+| Experiment | Completed conditions | Completed runs | Status |
+|---|---:|---:|---|
+| E1 mobility | 25/25 | 125/125 | Complete |
+| E2 density | 28/30 | 108/150 | Partial; no imputation |
+| E3 attacks | 90/90 | 450/450 | Complete |
+| E4 energy | 10/10 | 50/50 | Complete |
+| E4b lifetime | 10/10 | 50/50 | Complete |
+| E5 ablation | 6/6 | 30/30 | Complete |
+| E5b CMDP floor | 4/4 | 20/20 | Complete |
+| E6 overhead | 6/6 | 30/30 | Complete |
 
-### 6.2 Track 1: native reproduction
+### 6.2 Mobility and density
 
-The following values are means of the stored native speed-sweep rows.
+AR-EAURP did not dominate the mobility comparison at every speed. Its PDR was higher than EAURP at 20 m/s, while EAURP was higher at the other four tested speeds. The observed means and sample standard deviations are:
 
-| Model | A PDR | B PDR | A delay (ms) | B delay (ms) | A lifetime | B lifetime |
-|---|---:|---:|---:|---:|---:|---:|
-| Existing | 0.551 | 0.551 | 125.5 | 125.1 | 587 | 966 |
-| EAURP | 0.648 | 0.655 | 104.6 | 105.3 | 599 | 988 |
-| ATEAURP | 0.884 | 0.904 | 93.3 | 92.1 | 599 | 1238 |
-| PSE-EAURP | 0.892 | 0.932 | 81.3 | 80.8 | 599 | 1234 |
-| DRL-EAURP | 0.948 | 0.946 | 81.0 | 80.2 | 599 | 1236 |
-
-These results reproduce the source-style trend but are not evidence of route-level security. In particular, “Existing” is not an independently simulated protocol: it is derived from EAURP output using fixed multipliers. The delivered senior code also uses a gentler depletion band for proposed models than for the base. Holding the model constant while changing only that band produces:
-
-| Drain band | Lifetime | PDR |
-|---|---:|---:|
-| Eq. (8), [0.05, 0.15] | 995.5 | 0.9156 |
-| Delivered code, [0.04, 0.12] | 1237.0 | 0.9189 |
-
-Thus **241.5 rounds** of apparent lifetime improvement come from the constant drain-band difference in this ablation, while PDR is nearly unchanged.
-
-### 6.3 Track 2: clean common-harness comparison
-
-| Policy | PDR | PDR, routable | Delay (ms) | Throughput index |
-|---|---:|---:|---:|---:|
-| AODV | 0.735 | 0.783 | 74.1 | 17.976 |
-| EAURP | 0.740 | 0.782 | 73.8 | 18.310 |
-| A: DRL-EAURP | 0.733 | 0.778 | 77.3 | 18.090 |
-| B: senior DRL-EAURP | 0.735 | 0.780 | 77.2 | 18.153 |
-| C: AR-EAURP | 0.732 | 0.777 | 77.3 | 18.000 |
-
-The clean results are intentionally close. C is not designed to maximise clean PDR at any cost; it adds detection, contested-node handling, forecasting and constrained learning. The routable-PDR gap shows that topology itself limits delivery. At the paper's nominal (N=100,R=150) geometry, approximately 9% of node pairs are not mutually reachable before routing policy is applied.
-
-![Clean and speed-sweep results](../results/figures/e1_speed.png)
-
-### 6.4 Attack resilience
-
-Each cell below is **PDR / detection TPR** at 30% malicious nodes in the stored attack sweep.
-
-| Policy | Black hole | Gray hole | Trust poisoning |
-|---|---:|---:|---:|
-| AODV | 0.31 / 0.00 | 0.62 / 0.00 | 0.59 / 0.00 |
-| EAURP | 0.22 / 0.37 | 0.63 / 0.00 | 0.60 / 0.00 |
-| A: DRL-EAURP | 0.20 / 0.37 | 0.64 / 0.00 | 0.60 / 0.00 |
-| B: senior DRL-EAURP | 0.20 / 0.00 | 0.62 / 0.00 | 0.57 / 0.00 |
-| C: AR-EAURP | 0.29 / 0.53 | 0.63 / 0.57 | 0.62 / 0.45 |
-
-The gray-hole result is the central finding. Across non-zero malicious fractions, mean detection recall is:
-
-| Policy | Mean gray-hole TPR |
-|---|---:|
-| AODV | 0.000 |
-| EAURP | 0.005 |
-| A: DRL-EAURP | 0.003 |
-| B: senior DRL-EAURP | 0.000 |
-| C: AR-EAURP | 0.617 |
-
-#### Full-profile robustness check
-
-To test whether the short-horizon result survived a longer operating window, E3 was rerun with 400 rounds and five seeds per configuration. The 30% gray-hole slice below reports mean ± 95% confidence interval across seeds. The longer run lowers absolute PDR because energy depletion and route churn accumulate, but it preserves the qualitative security separation: AR-EAURP produces a non-zero gray-hole signal and the trust-only policies do not.
-
-| Policy | PDR | Detection TPR | FPR |
-|---|---:|---:|---:|
-| AODV | 0.465 ± 0.071 | 0.000 ± 0.000 | 0.000 |
-| EAURP | 0.479 ± 0.065 | 0.000 ± 0.000 | 0.000 |
-| A: DRL-EAURP | 0.460 ± 0.075 | 0.000 ± 0.000 | 0.000 |
-| B: senior DRL-EAURP | 0.464 ± 0.074 | 0.000 ± 0.000 | 0.000 |
-| C: AR-EAURP | **0.502 ± 0.073** | **0.293 ± 0.092** | **0.014 ± 0.013** |
-
-Across the five non-zero gray-hole fractions, the full-profile mean TPR is 0.334 for C, 0.002 for EAURP, 0.002 for A, and 0.000 for AODV and B. C's PDR advantage at 30% is directional rather than statistically conclusive at five seeds because the confidence intervals overlap. The stronger claim is the detector separation, not a universal PDR gain.
-
-\newpage
-
-![Full-profile gray-hole robustness](../output/full_results/figures/e3_grayhole_full.png){width=95%}
-
-The detector does not magically restore delivery: all policies lose PDR as attackers increase. Its value is that it produces a meaningful security signal for a selective attack that the scalar PFR layer cannot see. Under trust poisoning, C still detects a substantial fraction of attackers, but the slander attack increases the risk of false accusations and reduces the guarantee implied by majority consensus.
-
-![Attack sweep](../results/figures/e3_attack.png)
-
-### 6.5 Component ablation
-
-The 30% gray-hole ablation shows the attribution of C's components.
-
-| Variant | PDR | Detection TPR | FPR |
-|---|---:|---:|---:|
-| C full | 0.631 | 0.600 | 0.057 |
-| Without GAN | 0.640 | 0.000 | 0.000 |
-| Without LSTM | 0.622 | 0.533 | 0.036 |
-| Without CMDP | 0.637 | 0.483 | 0.021 |
-| Bare C | 0.642 | 0.000 | 0.000 |
-
-The GAN is responsible for the new detection capability. The LSTM and CMDP change routing and detection outcomes, but neither is independently sufficient to detect the gray hole. C's full PDR is not the highest in the table because the complete defence changes route choices and pays a modest false-positive cost. A security protocol should therefore be evaluated on a multi-objective surface rather than PDR alone.
-
-#### Full-profile ablation check
-
-The same component attribution was rerun for 400 rounds and five seeds. The absolute PDR values shift with the longer horizon, but the causal pattern is stable: removing GAN detection collapses gray-hole TPR to 0.007, while retaining the detector keeps TPR near 0.26–0.29. The CMDP and LSTM affect routing and false-positive trade-offs, not the existence of the detection signal.
-
-| Variant | PDR | Detection TPR | FPR |
-|---|---:|---:|---:|
-| C full | 0.493 ± 0.068 | 0.280 ± 0.142 | 0.026 ± 0.013 |
-| Without GAN | 0.489 ± 0.072 | 0.007 ± 0.016 | 0.000 ± 0.000 |
-| Without LSTM | 0.500 ± 0.068 | 0.287 ± 0.162 | 0.009 ± 0.014 |
-| Without CMDP | 0.502 ± 0.063 | 0.260 ± 0.187 | 0.020 ± 0.030 |
-| Bare C | 0.502 ± 0.065 | 0.000 ± 0.000 | 0.000 ± 0.000 |
-
-![C ablation](../results/figures/e5_ablation.png)
-
-### 6.6 Detector and forecaster quality
-
-In the stored pre-training checkpoint, the GAN achieves held-out validation AUC **0.967**. The implementation's measured decomposition found that the generator reconstruction residual is the useful signal; the discriminator is not a reliable normal-versus-attack classifier because attacked samples are still real samples. The feature-scaling floor is essential because several clean features have zero variance.
-
-The LSTM forecast results in the stored two-seed checkpoint are:
-
-| Forecaster | MAE | RMSE |
-|---|---:|---:|
-| LSTM | 0.0150 | 0.0245 |
-| Persistence | 0.0184 | 0.0376 |
-| Seasonal naive | 0.0092 | 0.0233 |
-
-The LSTM beats persistence but loses to the seasonal-naive baseline. The forecast component is therefore promising as a general architecture but not yet justified as the best model for this synthetic harvest process.
-
-The full-profile commissioning run, which trains for 40 rather than 10 LSTM epochs and uses the 400-round commissioning sequence, gives a different outcome: validation AUC 0.970, LSTM MAE 0.00725, persistence MAE 0.01845 and seasonal-naive MAE 0.00922. In that setting the LSTM beats both baselines. This sensitivity is itself a result: forecasting claims depend on training budget and sequence regime, so the final paper should report both checkpoints or fix the commissioning protocol before making a general model-selection claim.
-
-\newpage
-
-![GAN training diagnostics](../results/figures/c_gan_training.png)
-
-\newpage
-
-![Energy forecast diagnostics](../results/figures/c_lstm_accuracy.png){width=85%}
-
-### 6.7 CMDP feasibility
-
-The requested PDR floor is not reachable in the evaluated topology under the configured attack workload.
-
-| Requested floor | Achieved PDR | Constraint violation rate |
+| Maximum speed | EAURP PDR (%) | AR-EAURP PDR (%) |
 |---:|---:|---:|
-| 0.50 | 0.652 | 0.000 |
-| 0.60 | 0.650 | 0.149 |
-| 0.70 | 0.655 | 0.775 |
-| 0.80 | 0.648 | 0.998 |
-| 0.90 | 0.631 | 0.998 |
+| 1 m/s | 86.80 ± 9.64 | 86.60 ± 14.32 |
+| 5 m/s | 95.00 ± 4.99 | 94.10 ± 5.56 |
+| 10 m/s | 88.10 ± 7.01 | 83.93 ± 11.10 |
+| 15 m/s | 88.90 ± 6.38 | 86.17 ± 6.90 |
+| 20 m/s | 87.07 ± 6.41 | 89.23 ± 4.73 |
 
-The dual multiplier rises toward its cap while the floor remains violated. This is useful evidence, not simply a tuning failure: a constraint that exceeds the topology-and-channel ceiling cannot be satisfied by a better reward weight. Future work should constrain routable PDR, use a topology-conditioned floor, or formulate a chance constraint over reachable traffic.
+The density results are mixed. Across replicated conditions from 60 to 120 nodes, AR-EAURP PDR was 92.40%, 88.00%, 67.87% and 60.70%; EAURP PDR was 89.47%, 87.03%, 70.00% and 65.50%. These are descriptive comparisons rather than evidence of a stable ordering. At 150 nodes all protocols have only one completed run; at 200 nodes coverage is incomplete and one-run cells are descriptive only. Density-specific claims should be deferred until the missing replications are run.
 
-![CMDP floor feasibility](../results/figures/e5b_cmdp_floor.png)
+![Mobility comparison](../results/ns3-native-paper-review/figures/paper_e1_mobility.png)
 
-### 6.8 Lifetime, overhead and scalability
+![Density comparison](../results/ns3-native-paper-review/figures/paper_e2_density.png)
 
-The lifetime experiment distinguishes the operational performance window from the long-horizon first-death measurement. Solar harvesting extends the evaluation horizon, but transmission and reception costs still matter. A node can be alive yet ineligible as a relay once it falls below the 20% energy gate.
+### 6.3 Attack resilience and detection
 
-The stored overhead comparison reports approximately 13.5 control packets per round for each policy because PT_NID/PT_GID and route-control accounting are shared. Wall-clock cost differs:
+The E3 attack sweep varied black-hole, gray-hole and trust-poisoning prevalence from 0% to 50%. At 30% hostile nodes, the five-protocol PDR comparison was:
 
-| Policy | Control packets/round | Wall clock (s) |
-|---|---:|---:|
-| AODV | 13.5 | 0.6 |
-| EAURP | 13.5 | 0.5 |
-| A: DRL-EAURP | 13.5 | 0.7 |
-| B: senior DRL-EAURP | 13.5 | 0.6 |
-| C: AR-EAURP | 13.5 | 2.0 |
+| Protocol | Black hole PDR (%) | Gray hole PDR (%) | Trust poisoning PDR (%) |
+|---|---:|---:|---:|
+| AODV | 30.37 ± 6.55 | 83.67 ± 9.62 | 83.67 ± 9.62 |
+| EAURP | 40.80 ± 15.61 | 82.67 ± 2.84 | 56.90 ± 14.72 |
+| DRL-EAURP (paper) | 38.40 ± 14.38 | 82.60 ± 10.65 | 70.47 ± 10.84 |
+| DRL-EAURP (senior) | 25.97 ± 9.38 | 86.40 ± 6.85 | 86.40 ± 6.85 |
+| AR-EAURP | 38.47 ± 15.13 | 83.90 ± 8.08 | 54.60 ± 12.97 |
 
-C is roughly three to four times as expensive as the reference policies in the stored benchmark. Its vectorised implementation and route caches keep the experiment tractable, but the detector, forecasting and DQN state updates are not free. The watchdog tables are (N\times N), so memory and consensus cost are also important at larger node counts.
+For the 30% gray-hole condition, AR-EAURP's per-window detector had TPR 7.82% ± 4.98%, FPR 5.24% ± 5.14%, and AUC 0.55 ± 0.07 across five runs. This is weak discrimination in this native workload and is notably lower than the historical Python-harness result. The Python detector result must not be transferred to ns-3 as though it were the same experiment.
 
-![Lifetime experiment](../results/figures/e4b_lifetime.png)
+Across all 18 attack/prevalence cells, five matched run numbers were used for paired AR-EAURP minus EAURP PDR comparisons. Only one unadjusted 95% interval excluded zero: trust poisoning at 20% prevalence, +11.07 percentage points (95% CI +1.35 to +20.79; AR-EAURP won all five pairs). At 30% gray-hole prevalence, the paired difference was +1.23 points (95% CI −9.06 to +11.53; two of five pairs favored AR-EAURP). Since the contrast family is exploratory and unadjusted, the isolated trust-poisoning result is hypothesis-generating and does not establish general superiority.
 
-### 6.9 Competitive assessment against recent research expectations
+![Gray-hole PDR comparison](../results/ns3-native-paper-review/figures/paper_e3_grayhole_pdr.png)
 
-The following is a scope comparison, not a fabricated cross-paper leaderboard. Values from the cited studies are not transferred into the AR-EAURP tables because their workloads are not identical. The comparison instead asks whether the paper covers the evaluation dimensions that leading recent work makes salient.
+![Black-hole PDR comparison](../results/ns3-native-paper-review/figures/paper_e3_blackhole_pdr.png)
 
-| Dimension | Recent leading practice | AR-EAURP evidence | Assessment |
-|---|---|---|---|
-| Threat coverage | Explicit black/gray-hole or route-manipulation model; often security assumptions | Black hole, selective gray hole and trust poisoning with executable adversary logic | Strong within the chosen data-plane threat model; collusion, Sybil and wormhole attacks remain open |
-| Baseline fairness | AODV/DSR/OLSR plus a learned or trust-aware comparator | AODV, EAURP, paper DRL-EAURP, senior implementation, AR-EAURP on one harness | Better than source-only comparison; missing DSR/OLSR and an independently implemented learned detector baseline |
-| Learning stability | Conservative or topology-aware learning, often with worst-case reporting [12,14] | DQN/CMDP, ablations, floor-feasibility sweep, mean/std checkpoints | Transparent, but not yet topology-aware and not a formal safety guarantee |
-| Security assurance | Formal route-discovery or authentication properties in some work [13] | ECC-backed control messages and empirical detection metrics | Empirical detection only; no proof of route authenticity or arbitrary-adversary resilience |
-| Physical fidelity | NS-3, co-simulation or hardware validation in stronger systems papers | Python hop-by-hop model plus an ns-3 implementation path | Mechanistic comparison is reproducible; radio claims still require ns-3/hardware results |
-| Statistical reporting | Multiple seeds, confidence intervals, sensitivity or worst-case metrics | Quick checkpoint plus a full-profile protocol, ablations and explicit limitations | Publication-ready only when the full-profile tables and intervals accompany the submission |
-| Energy awareness | Residual-energy or harvesting-aware routing, sometimes with forecasting | Linear and solar models, LSTM, seasonal-naive control, lifetime analysis | Broad coverage; the LSTM is not best on the synthetic forecast benchmark |
-| Selective-forwarding detection | Often aggregate trust or classifier accuracy | Packet-size-conditioned features, clean threshold, TPR/FPR and detector ablation | Primary differentiator: C reaches 0.617 mean gray-hole TPR while scalar baselines remain near zero |
+![Trust-poisoning PDR comparison](../results/ns3-native-paper-review/figures/paper_e3_trust_poisoning_pdr.png)
 
-The defensible competitive claim is therefore conditional: **AR-EAURP is better than the included trust-only baselines for detecting the configured selective-forwarding attack under a shared mechanistic harness, while preserving comparable clean-network PDR.** It is not defensible to claim that it is better than every leading MANET paper across PDR, delay, energy, security assurance and scalability. Making that distinction explicit is part of the contribution because the source implementations otherwise invite an apples-to-oranges claim.
+### 6.4 Energy, lifetime and component ablations
+
+With battery-only operation, AR-EAURP's E4 PDR was 87.47% ± 4.41%; with solar/kinetic harvesting it was 89.23% ± 4.73%. The harvest model increased residual energy, but these results do not by themselves show a statistically resolved PDR gain. In the 900 s lifetime experiment, first node death occurred at 423.60 ± 0.69 s on battery and 432.79 ± 1.90 s with harvesting. The 80%-dead endpoint was censored in the harvested runs, which means it was not observed within the configured horizon and must not be treated as an observed death time.
+
+The E5 ablation gives a clearer result about the detector component. Removing GAN detection eliminated the reported TPR in this experiment but did not reduce PDR; the no-GAN variant's PDR was 85.63% ± 8.04% versus 83.90% ± 8.08% for the full system. LSTM and CMDP ablations produced small, mixed changes. This supports that the detector component creates the measured anomaly signal, while the current data do not show that it improves delivery.
+
+| AR-EAURP variant | PDR (%) | Window TPR (%) | Window FPR (%) | Score AUC |
+|---|---:|---:|---:|---:|
+| Full | 83.90 ± 8.08 | 7.82 ± 4.98 | 5.24 ± 5.14 | 0.55 ± 0.07 |
+| Without GAN | 85.63 ± 8.04 | 0.00 ± 0.00 | 0.00 ± 0.00 | 0.50 ± 0.00 |
+| Without LSTM | 83.97 ± 7.25 | 8.89 ± 8.43 | 5.92 ± 3.67 | 0.56 ± 0.03 |
+| Without CMDP | 84.50 ± 7.35 | 6.77 ± 8.57 | 5.55 ± 5.21 | 0.60 ± 0.09 |
+| Bare AR-EAURP | 82.67 ± 2.84 | 0.00 ± 0.00 | 0.00 ± 0.00 | 0.50 ± 0.00 |
+| Without energy excuse | 83.90 ± 8.08 | 7.82 ± 4.98 | 5.24 ± 5.14 | 0.55 ± 0.07 |
+
+![Energy comparison](../results/ns3-native-paper-review/figures/paper_e4_residual_energy.png)
+
+![Component ablation](../results/ns3-native-paper-review/figures/paper_e5_ablation.png)
+
+### 6.5 CMDP delivery floor and security overhead
+
+In E5b, raising the requested raw-PDR floor did not yield a monotonic increase in observed PDR. The mean was 88.63% ± 4.07% at a 0.80 floor, 83.90% ± 8.08% at 0.90 and 78.20% ± 12.22% at 0.95. The evaluated scenarios do not demonstrate that AR-EAURP meets the 0.90 constraint. A requested constraint is a target, not a guarantee; the observed result indicates that this formulation and workload do not reliably satisfy it.
+
+In E6 at 30% gray-hole prevalence, AR-EAURP reported 218,395 ± 14,431 control bytes, 30,906 ± 1,356 cryptographic bytes and mean delay 0.28 ± 0.14 s. EAURP reported 224,339 ± 10,551 control bytes, 30,654 ± 495 cryptographic bytes and 0.27 ± 0.08 s delay. The no-ECC ablation reported zero cryptographic bytes, with higher mean control bytes (230,748 ± 24,774). These are simulator accounting metrics for the configured scenario; they should not be generalized to deployed network cost without calibration.
+
+### 6.6 Earlier native five-run comparison
+
+A separate, earlier native ns-3 validation used runs 1–5 with seed 1 at 25% gray-hole prevalence. EAURP PDR was 83.73% ± 4.23%, compared with 81.83% ± 4.60% for AR-EAURP. The paired AR-EAURP minus EAURP estimate was −1.90 percentage points (95% CI −8.46 to +4.66), which is inconclusive. The AR detector's AUC was 0.55 ± 0.08, contested-node TPR was 0%, and the LSTM lost to persistence on every commissioning evaluation. This earlier result is preserved because it motivated subsequent implementation corrections, but it is a separate configuration and should not be pooled with the E1–E6 matrix.
+
+### 6.7 CMDP commissioning follow-up
+
+A later study trained the CMDP route selector during clean commissioning and evaluated 30 matched run numbers (21–50) under 25% gray-hole prevalence. EAURP mean PDR was 79.81%; AR-EAURP mean PDR was 80.97%. The paired difference was +1.16 percentage points (95% CI −2.97 to +5.30), with AR-EAURP winning 16 of 30 pairs. Mean delay was 0.256 s for EAURP and 0.288 s for AR-EAURP; the paired delay difference was +32 ms (95% CI −21 to +84). AR-EAURP's detector TPR was 4.69%, FPR 4.94%, and AUC 0.586.
+
+The point estimate is slightly positive, but both PDR and delay intervals include zero. This follow-up therefore does not establish that commissioning-trained CMDP improves delivery. Earlier greedy and low-exploration tuning candidates are retained in the repository but are not used as confirmatory evidence; the greedy candidate performed worse than EAURP on its ten held-out pairs. Selection and held-out run ranges are documented in the optimization-study README.
+
+### 6.8 Comparison with the prior Colab review
+
+The previous project review reported a modest AR-EAURP advantage in the Python evaluation presented in Colab. The stored Python full-profile gray-hole result at 30% prevalence was 50.25% ± 5.86% PDR for AR-EAURP and 47.92% ± 5.24% for EAURP. Under that model, the point difference was positive. The current native ns-3 results do not reproduce that numerical PDR level: the 30% gray-hole PDRs are 83.90% for AR-EAURP and 82.67% for EAURP in the separate ns-3 review scenario. The numerical values are not directly comparable because traffic volume, topology, channel, routing events, energy, measurement and protocol implementations differ. Within ns-3, the 5-run attack matrix and the 30-pair CMDP follow-up both have confidence intervals spanning zero for the main gray-hole PDR contrast. The defensible conclusion is that the earlier Python result motivated a native evaluation, but native ns-3 evidence so far does not confirm a reliable delivery advantage.
+
+### 6.9 Figures and machine-readable evidence
+
+The expanded ns-3 report includes full tables for E1–E6, per-run settings, aggregate settings, paired attack comparisons, figures and raw checkpoints. The optimization-study folder contains the 30-pair follow-up JSON and logs. Together these artifacts provide the detailed result record behind this concise manuscript; incomplete density runs remain explicitly absent.
 
 ---
 
 ## 7. Discussion
 
-### 7.1 What the project demonstrates
+The current evidence shows that protocol performance depends on the simulator and workload. The earlier Python/Colab review reported a positive PDR point estimate for AR-EAURP in one gray-hole condition. Native ns-3 measured a small positive difference in the 30% gray-hole review cell, but the five-run paired interval was wide and included zero. A separate 30-pair commissioning-trained CMDP study also had a positive point estimate, but its confidence interval included zero. These results are consistent with a possible benefit, but are not sufficient to claim that AR-EAURP is better than EAURP in delivery performance.
 
-The project demonstrates a specific and defensible security improvement: selective forwarding becomes observable when the protocol preserves packet-type information. A gray hole is stealthy only relative to the observer's measurement model. If the observer collapses all packets into one PFR, a selective loss pattern can remain above threshold. If it compares large- and small-packet behaviour and checks report disagreement, the same behaviour becomes anomalous.
+The current ns-3 detector result is also less favorable than the earlier Python result. At 30% gray-hole prevalence, the per-window AUC of 0.55 indicates weak ranking ability under this native implementation and review workload. The ablation shows that the GAN contributes the measured alert signal, but does not show that the detector improves packet delivery. Improving detector calibration, observation coverage and validation against simpler detectors is a priority before claiming operational attack detection.
 
-The common harness also demonstrates why protocol claims must be coupled to a world model. In the native model, there is no route, relay or per-hop adversarial decision. In the mechanistic model, there are partitions, route caches, link failures, energy gates and explicit loss causes. The latter is slower and more assumption-heavy, but it makes the research question testable.
+The density and CMDP studies reinforce the same conclusion. High-density measurements are incomplete, and single-run conditions cannot establish a trend. The requested 0.90 raw-PDR floor was not reached reliably. Results should therefore be presented as a measured performance envelope with uncertainty rather than as a guarantee or universal protocol ranking.
 
-### 7.2 What the project does not demonstrate
-
-The results do not establish that AR-EAURP is the best MANET protocol, that GANs are necessary, or that a 90% PDR guarantee is achieved. They also do not establish physical-radio performance for the Python harness. The ns-3 implementation is the appropriate path for that question, but its results are not silently substituted into the tables here.
-
-The LSTM result is especially important. It beats persistence but not seasonal naive, so the paper cannot claim that deep forecasting is superior in this workload. Similarly, the GAN's discriminator contributes little to anomaly ranking; the effective detector is a clean-manifold reconstruction score trained inside a GAN framework.
-
-### 7.3 Fairness of comparison
-
-The two-track design is not a complication added for presentation; it is necessary for validity. Track 1 answers “does the implementation reproduce the source computation?” Track 2 answers “how do policies behave when they face the same packet-level world?” A Track 1 PDR of 0.95 and a Track 2 PDR of 0.73 are not contradictory observations because their denominators and failure processes differ.
-
-The same principle applies to the app and ns-3 code. RelayMesh validates direct device discovery and messaging on supported mobile transports. ns-3 validates packet and radio integration. Neither should be cited as if it were the Python experiment, and the Python experiment should not be cited as if it were an over-the-air deployment.
-
-### 7.4 Is the result better than leading papers?
-
-Not in the unrestricted sense implied by “better.” The current evidence supports a narrower result that is more valuable scientifically: AR-EAURP improves observability of a selective-forwarding attack that defeats scalar PFR trust, and it does so without claiming a clean-network PDR gain. That is a meaningful security contribution, but it is not a universal routing-performance victory.
-
-The comparison also reveals where the project is behind the strongest recent work. It lacks a formal security proof, a graph-native policy, DSR/OLSR and modern learned baselines, radio-calibrated or hardware results, and a sufficiently powered sensitivity study. Adding those ingredients would strengthen a future journal submission, but inventing cross-paper superiority from incompatible published numbers would weaken this paper. The manuscript therefore treats “better” as a falsifiable conditional claim and reports the conditions, costs and failure modes needed to reproduce it.
+The project's contribution at this stage is the end-to-end implementation, transparent experiment record, attack-specific analysis, ablations and explicit correction of earlier overclaims. The current evidence is useful because it identifies both the potential and the unresolved limits of the protocol.
 
 ---
 
 ## 8. Limitations and threats to validity
 
-1. **Synthetic channel model in the Python harness.** The per-hop reliability function is a project assumption. Relative comparisons are controlled, but absolute PDR is not a calibrated radio claim.
-2. **Stored quick-profile checkpoints.** The checked-in common-harness tables are two-seed, 200-round checkpoints. The full profile exists and should be run before publication as a venue paper.
-3. **Topology ceiling.** Some source-destination pairs are unreachable before routing. A raw PDR floor can therefore be infeasible even for an ideal route selector.
-4. **Threat-model coverage.** Only three adversarial behaviours are included. Collusion, on-off attacks, wormholes, Sybil identities, adaptive packet-size evasion and MAC-layer attacks remain open.
-5. **Trust observability.** Watchdog observations are subject to missed overhearing and route diversity. Sparse traffic reduces detection coverage; higher flow counts improve coverage but change the workload.
-6. **Detector threshold.** A 95th-percentile clean threshold is simple and auditable, but it is not calibrated for deployment costs or changing environments.
-7. **Energy realism.** The Python solar model is a controllable synthetic process. Real panels, batteries, radio current draw and duty cycling should be evaluated in ns-3 and on hardware.
-8. **Cross-platform application boundary.** RelayMesh currently supports Android-to-Android and Apple-to-Apple peer transports, not Android-to-Apple interoperation and not multi-hop forwarding.
-9. **Scalability.** Per-observer (N\times N) arrays and consensus can become expensive. A production design needs sparse observation storage and bounded evidence dissemination.
-10. **Statistical power.** Two seeds are sufficient for a reproducible checkpoint and unit-testable engineering result, but insufficient for strong claims about small effect sizes. A full evaluation should report confidence intervals, paired seeds and sensitivity analysis.
+1. **Incomplete density matrix.** The native E2 sweep completed 108/150 runs. Two conditions are absent, and several high-density observations have n=1. No inference is made from these as replicated results.
+2. **Simulator fidelity.** ns-3 provides a modeled IPv4/802.11 environment, not calibrated over-the-air measurements. Hardware validation remains future work.
+3. **Different experiment tracks.** Python/Colab and ns-3 use different workloads, channel, routing and observation implementations. Their raw PDR values cannot be compared as a controlled treatment effect.
+4. **Weak native detector performance.** The measured AUC was 0.55 in the selected 30% gray-hole review condition; TPR and FPR are window-level metrics. These do not establish high-confidence detection or successful network-wide consensus.
+5. **Multiple comparisons.** E3 contains 18 exploratory paired attack/prevalence contrasts. The reported intervals are not adjusted for this family; the sole interval excluding zero requires independent confirmation.
+6. **Limited run counts.** Most E1–E6 conditions have five runs. Five replications can leave wide intervals for noisy effects; the separate 30-pair study is more informative but still has intervals spanning zero for its primary PDR and delay outcomes.
+7. **CMDP feasibility.** The raw-PDR target may be mismatched to reachable traffic and topology. An unmet target is not proof that no policy can satisfy a better-formulated constraint.
+8. **Energy model assumptions.** Battery, radio-current and harvest parameters are simulator settings. Lifetime values are comparative outputs under those settings, not real device lifetime predictions.
+9. **Threat coverage.** The evaluation covers black holes, gray holes and trust poisoning. Sybil identities, wormholes, adaptive selective forwarding, collusion and MAC-layer attacks require additional tests.
+10. **Forecast and detector baselines.** The LSTM was rejected in an earlier commissioning evaluation when it failed to beat persistence. More independent detector and forecaster baselines are required before attributing gains to complex models.
+11. **External validity.** The results do not establish superiority over all MANET protocols, all attack mixes or published systems with incompatible workloads.
 
 ---
 
 ## 9. Reproducibility and future work
 
-The repository is intended to be executable rather than merely descriptive. `src/` is the source of truth; notebooks are generated from it. The recommended next evaluation is:
+The current native review report and study outputs are committed with the project. In the configured WSL environment, build and verify ns-3.45, then run the matrix with:
 
 ```bash
-python experiments/run_all.py --profile full --fresh
-python tools/make_report.py
-python -m pytest tests/ -q
+bash ns3/scripts/setup.sh
+bash ns3/scripts/run.sh --verify=1
+bash ns3/scripts/run.sh --profile=review --only=e1,e2,e3,e4,e5,e6 --out=results/ns3-native-paper-review --render=0
 ```
 
-Future work should proceed in four directions:
+The CMDP commissioning follow-up can be reproduced with:
 
-- replace the raw PDR CMDP constraint with a reachable-traffic or topology-conditioned constraint;
-- compare the GAN detector against simpler one-class baselines such as robust z-scores, isolation forests and one-class SVMs;
-- replace or augment the LSTM with a seasonal-naive or hybrid model selected by online validation; and
-- reconcile the Python and ns-3 implementations with a shared scenario manifest, then validate the protocol on physical devices or a hardware-in-the-loop testbed.
+```bash
+bash ns3/scripts/run_cmdp_commissioning_study.sh results/optimization_study/reproduction 21 50
+```
 
-The ns-3 implementation already contains the right integration points for this next phase: real RREQ flooding, promiscuous watchdog observation, packetised trust messages, route repair, radio energy accounting and a solar harvester. The RelayMesh application provides a separate user-facing test surface for direct nearby messaging and can later become a demonstrator for policy-aware multi-hop transport if a cross-platform transport abstraction is added.
+The study ledgers record settings and source hashes. The remaining 42 E2 replications are required to complete the originally planned matrix. Re-running that work should preserve the fixed seed and exact run numbers, verify that existing checkpoints match their hashes, and regenerate the aggregate tables and figures without imputing missing runs.
+
+Future work should prioritize: (i) finishing E2 and adding replications where confidence intervals remain broad; (ii) improving the ns-3 detector and comparing it with simple one-class baselines; (iii) defining a reachable-traffic or topology-conditioned CMDP constraint; (iv) pre-registering a confirmatory gray-hole comparison and adjusting for multiple hypotheses; and (v) validating radio and energy assumptions against a hardware testbed.
 
 ---
 
 ## 10. Conclusion
 
-AR-EAURP is best understood as a research system and evaluation framework, not as a single claim that every component improves every metric. Its strongest result is targeted: a size-conditioned anomaly detector exposes a gray-hole that aggregate PFR trust misses, reaching 0.617 mean recall across non-zero attack fractions in the stored common-harness evaluation. Its most valuable methodological result is equally important: the project makes the difference between paper-level probabilistic delivery and mechanistic route-level delivery explicit.
+The current native ns-3 evidence does not prove that AR-EAURP outperforms EAURP. In the completed attack matrix, only one of 18 unadjusted paired PDR intervals excluded zero, and that trust-poisoning result requires confirmation. The 30-pair commissioning-trained CMDP study estimated a +1.16 percentage-point delivery difference, but its 95% interval ranged from −2.97 to +5.30 points. At 30% gray-hole prevalence, the ns-3 detector achieved TPR 7.82%, FPR 5.24% and AUC 0.55, which is weak performance in the tested scenario. The density sweep remains incomplete at 863/905 total runs.
 
-The evaluation also identifies clear boundaries. The senior implementation's lifetime advantage is partly a drain-band constant. The “Existing” baseline is derived rather than independently simulated. The LSTM loses to seasonal naive. The 0.90 PDR floor is infeasible in the tested topology. AR-EAURP costs more runtime. These findings do not weaken the project; they define the conditions under which its security contribution is meaningful and give future work measurable targets.
+The earlier Python/Colab review reported a modest positive PDR difference in a distinct gray-hole experiment. That result motivated the native evaluation, but it cannot be transferred to ns-3 or treated as a direct comparison. The project's strongest current contribution is a transparent, reproducible implementation and evidence pipeline that records where AR-EAURP may help and where further engineering and statistically powered validation are still needed.
 
 ---
+
 
 ## References
 
@@ -614,40 +481,17 @@ The evaluation also identifies clear boundaries. The senior implementation's lif
 
 ---
 
-## Appendix A. Mapping from claims to implementation
+## Appendix A. Evidence locations and interpretation
 
-| Claim or mechanism | Source implementation |
-|---|---|
-| Hop-by-hop forwarding | `src/common/simulator.py::Simulation.forward` |
-| Per-hop link and delay model | `src/common/channel.py` |
-| Energy gate and route scoring | `src/routing/aodv.py` |
-| PFR trust and consensus | `src/routing/trust.py` |
-| Threat behaviours | `src/common/adversary.py` |
-| Size-conditioned detector features | `src/c_ar_eaurp/threat_model.py` |
-| GAN anomaly detector | `src/c_ar_eaurp/gan_detector.py` |
-| LSTM energy predictor | `src/c_ar_eaurp/lstm_energy.py` |
-| CMDP/DQN agent | `src/c_ar_eaurp/cmdp_agent.py` |
-| AR-EAURP policy integration | `src/c_ar_eaurp/protocol.py` |
-| Metrics and detection scoring | `src/common/metrics.py` |
-| Experiment orchestration | `experiments/run_all.py`, `experiments/sweeps.py` |
-| Automated report generation | `tools/make_report.py` |
-| Unit tests | `tests/test_harness.py` |
+| Evidence | Repository location | Use in this manuscript |
+|---|---|---|
+| Native ns-3 paper-style report, tables and figures | `results/ns3-native-paper-review/` | Main E1–E6 results; includes completion status and run-level provenance |
+| CMDP commissioning study | `results/optimization_study/` | Separate 30-pair follow-up and exploratory tuning record |
+| Earlier Python full-profile results | `output/full_results/` | Historical Colab/Python context only; do not pool with ns-3 |
+| Native simulator and reproducibility scripts | `ns3/` | Current C++ protocol and test workflows |
 
-## Appendix B. Interpretation guide
+The term “detection TPR/FPR” in E3 refers to per-window AR detector measurements. It is distinct from contested-node consensus and revocation. A baseline with no AR detector has no comparable detector performance. PDR means application packet delivery under the particular experiment configuration; absolute values across Python and ns-3 runs are not a controlled direct comparison.
 
-- Use Track 1 only for source-model reproduction and implementation auditing.
-- Use Track 2 for policy comparison under identical mechanistic worlds.
-- Use the ns-3 scenario for radio-level claims.
-- Use RelayMesh for direct nearby-device application behaviour.
-- Do not cite a stored quick-profile checkpoint as a statistically powered full benchmark.
+## Appendix B. Submission status
 
-## Appendix C. Submission-readiness checklist
-
-Before submission to a competitive venue, the following remaining items should be attached to the manuscript rather than left as future work:
-
-1. Paired-seed effect sizes from raw per-seed records for the headline comparisons; the full-profile tables and confidence intervals are now included, but the aggregate CSVs do not preserve every paired observation.
-2. An independently implemented non-GAN detector baseline, plus DSR or OLSR and at least one topology-aware learned routing baseline.
-3. A shared scenario manifest and a matched ns-3 reproduction of the headline gray-hole experiment.
-4. A sensitivity matrix for packet-size threshold, clean-threshold percentile, malicious fraction, density, mobility and energy model.
-5. A formal statement of what ECC protects, what it does not protect, and which security properties are empirical rather than proven.
-6. A release archive containing source, environment lockfile, result hashes and the exact commands used to generate every figure and table.
+The current manuscript is a transparent project evaluation, not a claim of universal protocol superiority. Before journal submission, complete the remaining E2 density replications, pre-register a primary ns-3 security comparison, adjust for multiple testing, validate the detector against simpler baselines, and measure the radio/energy model against hardware or calibrated traces.
