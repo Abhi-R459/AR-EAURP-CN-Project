@@ -201,15 +201,13 @@ AR-EAURP mean PDR was 80.97% versus 79.81% for EAURP (paired difference
 superiority. Earlier exploration and tuning runs are labeled separately in
 the study README so they are not mixed with the held-out comparison.
 
-The report folder is included in the repository as reproducibility evidence:
+The finished documents and study evidence are included in the repository.
+Editable manuscript sources and document-generation tools are kept locally in
+`paper/` and are not published to GitHub:
 
-- [Current research paper (Word)](AR_EAURP_Research_Paper.docx)
-- [Research paper PDF preview — 16 pages](AR_EAURP_Research_Paper_Preview.pdf)
-- [Complete tests and findings (Word)](AR_EAURP_Test_Results_and_Findings_Final.docx)
-- [Tests and findings PDF preview — 27 pages](AR_EAURP_Test_Results_and_Findings_Final_Preview.pdf)
-- [Editable research-paper source](paper/AR_EAURP_Research_Paper.md)
-- [Editable test-report source](paper/AR_EAURP_Test_Results_and_Findings.md)
-- [Document generation and layout workflow](paper/README.md)
+- [Current research paper (Word)](project_docs/AR_EAURP_Research_Paper.docx)
+- [Complete tests and findings (Word)](project_docs/AR_EAURP_Test_Results_and_Findings_Final.docx)
+- [Combined paper and findings (PDF)](project_docs/AR_EAURP_Research_Paper_and_Test_Results_and_Findings.pdf)
 - [Paper-style report (HTML)](results/ns3-native-paper-review/paper_results.html)
 - [Paper-style report (Markdown)](results/ns3-native-paper-review/paper_results.md)
 - [Study settings and completion manifest](results/ns3-native-paper-review/study_settings.json)
@@ -266,7 +264,7 @@ simulation notebooks have been removed. They remain recoverable from Git
 history. The intermediate Python ns-3 launcher and analysis utilities in
 `legacy/ns3-python-tooling/` contain no simulation engine and are unsupported.
 Existing `output/` measurements are historical Python results and must not be
-presented as native measurements. The current `paper/` manuscript and test
-report explicitly separate those historical results from the native ns-3 study.
+presented as native measurements. The documents in `project_docs/` separate
+those historical results from the native ns-3 study.
 
 The independent Flutter messenger remains in `app/`; see its README.
