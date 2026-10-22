@@ -1,11 +1,15 @@
 # AR-EAURP — native ns-3 workflow
 
-The entire active workflow is **compiled ns-3.45 C++**: experiment selection,
+The simulation and active workflow are **compiled ns-3.45 C++**: experiment selection,
 network simulation, GAN/LSTM/tabular learning/CMDP, repeated seeds,
 checkpointing, statistics, CSVs, reports and plot-script generation.
 Plots use ns-3's `Gnuplot` helper and the gnuplot renderer. Shell scripts build
 and launch the executables. There is no project Python runtime or Python
 orchestrator. Upstream ns-3 keeps its standard build dependencies.
+
+All network simulation must run in ns-3. Python may be used for analysis,
+visualization or other utilities, but must not implement a simulation engine,
+packet forwarding, mobility, energy evolution or protocol learning during a run.
 
 ## Build and run
 
@@ -135,10 +139,11 @@ Files panel. An actual Colab execution remains unverified.
 
 ## Historical material
 
-The Python simulation is preserved in `legacy/python/`. The intermediate
-Python ns-3 launcher and analysis tools are in `legacy/ns3-python-tooling/`.
-They are inactive. Existing `output/` and `paper/` material has been preserved
-and must not be presented as native measurements. Original senior notebooks
-remain source references.
+The former Python simulator, its trace simulator and the original Python
+simulation notebooks have been removed. They remain recoverable from Git
+history. The intermediate Python ns-3 launcher and analysis utilities in
+`legacy/ns3-python-tooling/` contain no simulation engine and are unsupported.
+Existing `output/` and `paper/` material is historical and must not be
+presented as native measurements.
 
 The independent Flutter messenger remains in `app/`; see its README.

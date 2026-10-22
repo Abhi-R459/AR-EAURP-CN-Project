@@ -29,11 +29,8 @@ An unpublished manuscript by **Lekha S.**, Vellore Institute of Technology —
 the senior's paper, and the base paper for this project. Not ours to publish.
 Request it from the author or your project supervisor.
 
-This is the paper implementation **A** is written from. Every equation
-reference in the archived `legacy/python/src/a_drl_eaurp/` — Eq. (1)–(38) — points into it, and
-`legacy/python/src/a_drl_eaurp/paper_model.py` lists both the assumptions made where the
-paper is under-specified and the deviations found between it and the delivered
-code.
+This is the paper implementation **A** is written from. The former Python
+reproduction and its equation notes are available in Git history only.
 
 The active `drl-paper` C++ variant adapts its tabular policy to local route
 discovery. See the root README for the native model's assumptions.
@@ -44,4 +41,6 @@ discovery. See the root README for the native model's assumptions.
 |---|---|
 | `Date_ 24_07_26.docx` | The AR-EAURP advancement roadmap — the five steps implementation **C** follows |
 | `Review_1.pdf` | Our Review 1 presentation: the critique of DRL-EAURP and the work plan |
-| `senior_code.ipynb` | Historical source reference for **B**, reproduced verbatim in `legacy/python/src/b_senior/senior_asis.py`; the active native variant is `drl-senior` |
+
+The original Python simulation notebook for **B** was removed; it remains in
+Git history. The native implementation is `drl-senior`.

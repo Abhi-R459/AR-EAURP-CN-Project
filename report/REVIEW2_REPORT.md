@@ -2,7 +2,7 @@
 
 Profile: **smoke**; engine: ns-3.45 C++.
 
-Build identity: `023a40d52ab982d6967d0d9e349be3334ab24641f106088cf2ebc7229ab4b78b`.
+Build identity: `ba75f6ec8d6a1a87dafd8d034eb3ec0e12a204ffe5b29613cfa768a65c0dcc0d`.
 
 These short single-seed runs validate execution only.
 
@@ -209,12 +209,12 @@ These short single-seed runs validate execution only.
 
 | Configuration | Generated control messages | Wall time (s) | Protected messages | Crypto overhead (bytes) | Authentication failures |
 |---|---:|---:|---:|---:|---:|
-| AODV (reference baseline) | 174 | 0.079264 | 116 | 3248 | 0 |
-| EAURP (base substrate) | 181 | 0.08025 | 114 | 3192 | 0 |
-| A: DRL-EAURP (paper) | 153 | 0.074621 | 113 | 3164 | 0 |
-| B: DRL-EAURP (senior) | 151 | 0.072884 | 113 | 3164 | 0 |
-| C: AR-EAURP (advancement) | 181 | 0.67119 | 114 | 3192 | 0 |
-| C without ECC | 181 | 0.66406 | 0 | 0 | 0 |
+| AODV (reference baseline) | 174 | 0.079445 | 116 | 3248 | 0 |
+| EAURP (base substrate) | 181 | 0.081065 | 114 | 3192 | 0 |
+| A: DRL-EAURP (paper) | 153 | 0.080101 | 113 | 3164 | 0 |
+| B: DRL-EAURP (senior) | 151 | 0.077676 | 113 | 3164 | 0 |
+| C: AR-EAURP (advancement) | 181 | 0.69225 | 114 | 3192 | 0 |
+| C without ECC | 181 | 0.7216 | 0 | 0 | 0 |
 
 ## Measurement and modelling limits
 
@@ -224,7 +224,7 @@ These short single-seed runs validate execution only.
 - PDR counts sends in the measurement window and their arrivals through cooldown. Lost ACKs can penalise delivered data. Delay is seconds, energy joules, forecasts watts, throughput bits/s.
 - GAN/LSTM train only during clean commissioning. An untrained flag means its zero error is a placeholder. LSTM holdouts are disjoint chronological intervals per node; persistence and window mean are baselines.
 - Lifetime flags identify observed deaths. Unobserved events are censored at the horizon; mixed censored/observed seed means are not lifetime estimates.
-- The solar/kinetic source is a model with compressed days and an ideal reservoir without a capacity ceiling. First depletion permanently disables the PHY, as in the archived Python simulation. A ns-3.45 radio callback guard prevents premature model shutdown while the PHY remains active.
+- The solar/kinetic source is a model with compressed days and an ideal reservoir without a capacity ceiling. First depletion permanently disables the PHY. A ns-3.45 radio callback guard prevents premature model shutdown while the PHY remains active.
 - X25519/HKDF/AES-GCM adds 28 bytes per protected message. Keys are deterministic simulation fixtures, provisioned before the run. Key-exchange traffic and crypto CPU latency are not injected into simulated time.
 - Control counters are generated message attempts, including attempts after PHY shutdown, rather than successful radio transmissions. Layer drop counters are not additive end-to-end loss categories.
 - CMDP multipliers, actions and violations include warmup/cooldown policy activity. An unmet PDR target does not prove mathematical infeasibility. Wall time includes commissioning and is host runtime.
