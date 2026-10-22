@@ -1,0 +1,41 @@
+Attack Type,Malicious Nodes (%),Protocol,PDR (%),Detection Recall (TPR %),False Positive Rate (FPR %),Revocation Rate (%),Delivery Degradation (%)
+Grayhole,0,AODV,76.1,0.0,0.0,0.0,0.0
+Grayhole,10,AODV,74.4,0.0,0.0,0.0,2.2
+Grayhole,20,AODV,73.8,0.0,0.0,0.0,3.0
+Grayhole,30,AODV,63.8,0.0,0.0,0.0,16.2
+Grayhole,40,AODV,58.0,0.0,0.0,0.0,23.8
+Grayhole,50,AODV,54.9,0.0,0.0,0.0,27.9
+Grayhole,0,EAURP,76.5,0.0,0.0,0.0,0.0
+Grayhole,10,EAURP,69.8,0.2,0.0,0.0,8.8
+Grayhole,20,EAURP,66.8,2.4,0.0,0.0,12.7
+Grayhole,30,EAURP,63.5,0.5,0.0,0.0,17.0
+Grayhole,40,EAURP,59.4,1.1,0.0,0.0,22.4
+Grayhole,50,EAURP,57.1,0.3,0.0,0.0,25.4
+Grayhole,0,A: DRL-EAURP (paper),76.2,0.0,0.0,0.0,0.0
+Grayhole,10,A: DRL-EAURP (paper),68.9,0.3,0.0,0.0,9.6
+Grayhole,20,A: DRL-EAURP (paper),65.4,0.1,0.0,0.0,14.2
+Grayhole,30,A: DRL-EAURP (paper),62.8,0.2,0.0,0.0,17.6
+Grayhole,40,A: DRL-EAURP (paper),58.7,0.1,0.0,0.0,23.0
+Grayhole,50,A: DRL-EAURP (paper),55.4,0.0,0.0,0.0,27.3
+Grayhole,0,B: DRL-EAURP (senior),75.9,0.0,0.0,0.0,0.0
+Grayhole,10,B: DRL-EAURP (senior),65.1,0.0,0.0,0.0,14.2
+Grayhole,20,B: DRL-EAURP (senior),63.8,0.0,0.0,0.0,15.9
+Grayhole,30,B: DRL-EAURP (senior),62.4,0.0,0.0,0.0,17.8
+Grayhole,40,B: DRL-EAURP (senior),57.2,0.0,0.0,0.0,24.6
+Grayhole,50,B: DRL-EAURP (senior),55.1,0.0,0.0,0.0,27.4
+Grayhole,0,C: AR-EAURP (advancement),71.8,0.0,3.4,0.0,0.0
+Grayhole,10,C: AR-EAURP (advancement),80.4,80.4,1.8,20.0,-11.9
+Grayhole,20,C: AR-EAURP (advancement),63.2,63.2,2.1,40.0,12.0
+Grayhole,30,C: AR-EAURP (advancement),56.8,56.8,7.3,60.0,20.9
+Grayhole,40,C: AR-EAURP (advancement),56.4,56.4,6.9,65.0,21.4
+Grayhole,50,C: AR-EAURP (advancement),53.2,53.2,4.2,70.0,25.9
+Blackhole,30,AODV,31.1,0.0,0.0,0.0,59.1
+Blackhole,30,EAURP,53.3,36.8,0.2,20.0,30.3
+Blackhole,30,A: DRL-EAURP (paper),61.7,36.8,0.2,20.0,19.3
+Blackhole,30,B: DRL-EAURP (senior),40.0,0.0,0.0,0.0,47.3
+Blackhole,30,C: AR-EAURP (advancement),53.3,53.6,5.2,20.0,25.8
+Trust Poisoning,30,AODV,66.8,0.0,0.0,0.0,12.2
+Trust Poisoning,30,EAURP,61.2,0.0,8.4,0.0,20.0
+Trust Poisoning,30,A: DRL-EAURP (paper),62.4,0.0,9.8,0.0,18.1
+Trust Poisoning,30,B: DRL-EAURP (senior),56.8,0.0,0.0,0.0,25.2
+Trust Poisoning,30,C: AR-EAURP (advancement),62.8,45.4,23.2,10.0,12.5

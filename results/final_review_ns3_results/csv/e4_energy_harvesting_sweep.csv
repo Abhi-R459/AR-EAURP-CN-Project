@@ -1,0 +1,11 @@
+Energy Profile,Protocol,Residual Energy (J),Harvested Energy (J),First Node Death (s),80% Fleet Depletion (s),Network PDR (%)
+Battery-Only (350J),AODV,5441.9,0.0,24.24,24.29,55.3
+Solar-Harvested,AODV,5479.7,35.25,24.56,40.0,82.0
+Battery-Only (350J),EAURP,5441.9,0.0,24.22,24.28,50.9
+Solar-Harvested,EAURP,5479.6,35.25,24.55,40.0,79.8
+Battery-Only (350J),A: DRL-EAURP (paper),5441.8,0.0,24.21,24.29,53.1
+Solar-Harvested,A: DRL-EAURP (paper),5479.6,35.25,24.54,40.0,82.5
+Battery-Only (350J),B: DRL-EAURP (senior),5441.9,0.0,24.23,24.3,53.1
+Solar-Harvested,B: DRL-EAURP (senior),5479.6,35.25,24.55,40.0,82.5
+Battery-Only (350J),C: AR-EAURP (advancement),5441.9,0.0,24.22,24.28,50.9
+Solar-Harvested,C: AR-EAURP (advancement),5479.6,35.25,24.55,40.0,79.8

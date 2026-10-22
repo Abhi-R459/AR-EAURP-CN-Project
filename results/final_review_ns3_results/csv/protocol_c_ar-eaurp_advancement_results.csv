@@ -1,0 +1,8 @@
+Experiment,Configuration,PDR (%),Mean Latency (ms),Throughput (kbps),Notes
+E1 (Speed 1 m/s),Low Mobility,79.3,73.1,19.2,Nominal stable routes
+E1 (Speed 20 m/s),High Mobility,66.7,72.4,15.8,Link breaks handled by RREQ
+E2 (Density N=24),Sparse Field,100.0,35.8,38.4,Full connectivity
+E2 (Density N=200),Dense Field,75.4,98.4,33.2,802.11 MAC contention backoff
+E3 (Grayhole 30%),Hostile Network,56.8,80.9,14.8,GAN flags attacker
+E4 (Solar Harvest),Renewable Fleet,79.8,15.1,31.2,LSTM prediction prevents early death
+E6 (Overhead),Crypto Protected,88.3,40.3,33.5,28B AES-GCM tags verified

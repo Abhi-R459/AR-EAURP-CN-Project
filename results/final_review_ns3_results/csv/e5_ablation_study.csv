@@ -1,0 +1,7 @@
+Configuration,PDR (%),GAN Active,LSTM Active,CMDP Active,Energy Excuse,Final Multiplier Lambda,Target Violations,Action Choice
+C: Full AR-EAURP,88.3,Yes,Yes,Yes,Yes,0.03,1,Balanced + Diversified
+C without GAN,88.3,No,Yes,Yes,Yes,0.03,1,Balanced + Diversified
+C without LSTM,88.3,Yes,No,Yes,Yes,0.03,1,Balanced + Diversified
+C without CMDP,88.3,Yes,Yes,No,Yes,0.0,0,Static R_Score
+C Bare (No AI),88.3,No,No,No,No,0.0,0,Static R_Score
+C without Energy Excuse,88.3,Yes,Yes,Yes,No,0.03,1,Balanced + Diversified

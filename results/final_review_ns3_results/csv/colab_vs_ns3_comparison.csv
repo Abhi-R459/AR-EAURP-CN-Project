@@ -1,0 +1,10 @@
+Dimension / Metric,Google Colab (Review 2),ns-3.45 Simulator (Final Review),Why ns-3 is More Realistic
+Time Domain Modeling,Discrete synchronous 'rounds' (integer steps),Continuous picosecond discrete events (Simulator::Schedule),"Captures true packet serialization, transmission delay, and channel busy time"
+Physical Layer (PHY),Ideal Euclidean step function (dist <= 150m),"802.11b DSSS, LogDistance Loss + Nakagami-m Fading","Models real RF signal attenuation, noise floor (-99 dBm), and boundary packet corruption"
+MAC Layer Contention,None (broadcasts traverse network instantly without cost),IEEE 802.11 DCF CSMA/CA with exponential binary backoff,"Captures real packet collisions, channel saturation, and hidden terminal drops"
+Queue / Buffer Modeling,Infinite Python memory lists,Finite DropTailQueue (max 100 packets per interface),Packets physically drop when routes break and queues overflow
+Packet Structure,Python dictionary objects / tuples,Serialized binary byte streams with IP/UDP/MAC headers,Packet size physically dictates channel occupancy airtime (750 µs for 1024B)
+Energy Consumption,"Synthetic drain constant band [0.05, 0.15] J/round","Real voltage/current states (TX: 380mA, RX: 313mA, Idle: 272mA)",Energy is depleted proportionally to active radio transmission airtime
+PDR @ High Mobility (20 m/s),"82.7% (artificially optimistic, no contention)","66.7% (realistic, accounts for RERR and route churn)",High mobility causes rapid link breaks and routing broadcast storms
+Grayhole Detection Recall (AR-EAURP),59.7% - 63.2% (abstract packet count),56.8% - 80.4% (8D C++ GAN flow feature manifold),"Detects real micro-jitter, size variance, and MAC ACK feedback disparities"
+Baseline Grayhole Recall (EAURP / DRL),0.0% - 0.5% (scalar watchdog evaded),0.0% - 0.5% (scalar watchdog evaded in real PHY/MAC),Confirms the fundamental theoretical blindspot holds in physical wireless reality

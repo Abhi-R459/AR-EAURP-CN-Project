@@ -23,5 +23,5 @@ project_docs/Lekha.pdf
 # ns-3 build artefacts (the ns-3 tree itself lives outside the repo)
 ns3/**/*.o
 
-# Regenerable native measurements and figures; historical output is untouched.
-/results/
+# Regenerable native measurements; historical and final review results are preserved.
+/results/ns3-native-*/

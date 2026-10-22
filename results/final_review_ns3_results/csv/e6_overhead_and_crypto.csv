@@ -1,0 +1,7 @@
+Configuration,Control Packets Generated,Protected UDP Packets,Crypto Wire Overhead (Bytes),ECC Key Agreement (s),Wall-Clock Time (s)
+AODV (Reference Baseline),174,116,3248,0.0059,0.079
+EAURP (Base Substrate),181,114,3192,0.0058,0.081
+A: DRL-EAURP (paper),153,113,3164,0.0057,0.08
+B: DRL-EAURP (senior),151,113,3164,0.0056,0.078
+C: AR-EAURP (Advancement),181,114,3192,0.0058,0.692
+C without ECC Encryption,181,0,0,0.0,0.722
